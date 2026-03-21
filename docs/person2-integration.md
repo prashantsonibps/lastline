@@ -21,6 +21,8 @@ This is the shortest path for the Telegram and issue-creation track.
   - `GET /api/reviews/:jobId/handoff`
 - Feedback mutations:
   - `POST /api/reviews/:jobId/feedback`
+- Screenshot extraction:
+  - `POST /api/reviews/:jobId/artifacts/screenshot`
 
 ## Handoff Response Shape
 
@@ -76,7 +78,7 @@ This is the shortest path for the Telegram and issue-creation track.
 5. Send the stitched video to Telegram.
 6. Collect timestamped findings.
 7. Save each finding through `POST /api/reviews/:jobId/feedback` with `action: "save_finding"`.
-8. Extract screenshots from the stitched video.
+8. Extract screenshots from the stitched video through `POST /api/reviews/:jobId/artifacts/screenshot`.
 9. Create GitHub issues in the same repo as the PR.
 10. Call `POST /api/reviews/:jobId/feedback` with `action: "mark_issue_created"` per finding.
 11. Move status through `creating_issues` and `done` with `action: "set_status"`.
@@ -119,6 +121,28 @@ This is the shortest path for the Telegram and issue-creation track.
 {
   "action": "set_status",
   "status": "creating_issues"
+}
+```
+
+### Extract screenshot
+
+```json
+{
+  "timestampText": "1:13",
+  "findingId": "finding-id"
+}
+```
+
+Response:
+
+```json
+{
+  "timestampSeconds": 73,
+  "screenshot": {
+    "kind": "remote_url",
+    "location": "https://...",
+    "isDurable": true
+  }
 }
 ```
 

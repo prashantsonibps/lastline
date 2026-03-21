@@ -151,8 +151,16 @@ export async function stitchReviewVideo(input: {
       "0",
       "-i",
       concatFilePath,
-      "-c",
-      "copy",
+      "-vf",
+      "fps=25,format=yuv420p",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "23",
+      "-movflags",
+      "+faststart",
       finalVideoPath,
     ],
     cwd: input.outputDir,
@@ -160,4 +168,32 @@ export async function stitchReviewVideo(input: {
   });
 
   return finalVideoPath;
+}
+
+export async function extractVideoScreenshot(input: {
+  videoPathOrUrl: string;
+  outputPath: string;
+  timestampSeconds: number;
+  onLog?: (message: string) => Promise<void>;
+}) {
+  await ensureDir(path.dirname(input.outputPath));
+  await runCommand({
+    command: config.ffmpegPath,
+    args: [
+      "-y",
+      "-ss",
+      String(input.timestampSeconds),
+      "-i",
+      input.videoPathOrUrl,
+      "-frames:v",
+      "1",
+      "-update",
+      "1",
+      input.outputPath,
+    ],
+    cwd: path.dirname(input.outputPath),
+    onOutput: (chunk) => void input.onLog?.(chunk.trim()).catch(() => {}),
+  });
+
+  return input.outputPath;
 }

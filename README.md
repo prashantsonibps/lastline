@@ -91,6 +91,14 @@ curl -X POST http://localhost:3000/api/reviews/<job-id>/feedback \
   -d '{"action":"save_finding","timestampText":"1:13","note":"Heading color is wrong in light mode."}'
 ```
 
+And extract a screenshot from the stitched final video through:
+
+```bash
+curl -X POST http://localhost:3000/api/reviews/<job-id>/artifacts/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"timestampText":"1:13"}'
+```
+
 ## Next steps
 
 - Install dependencies
