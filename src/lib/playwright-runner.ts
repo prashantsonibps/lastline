@@ -1,7 +1,8 @@
 import path from "node:path";
-import { chromium, type Page } from "playwright";
 import { ensureDir } from "@/lib/fs-utils";
+import { launchChromium } from "@/lib/playwright-browser";
 import type { QaAction, QaTask, ReviewArtifact } from "@/lib/types";
+import type { Page } from "playwright";
 
 async function runAction(page: Page, action: QaAction, taskOutputDir: string) {
   switch (action.type) {
@@ -43,7 +44,7 @@ export async function runQaTask(input: {
   const taskOutputDir = path.join(input.outputDir, input.task.id);
   await ensureDir(taskOutputDir);
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchChromium({ headless: true });
   const context = await browser.newContext({
     baseURL: input.baseUrl,
     viewport: { width: 1440, height: 960 },

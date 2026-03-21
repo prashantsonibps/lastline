@@ -1,9 +1,9 @@
 import path from "node:path";
 import { writeFile } from "node:fs/promises";
-import { chromium } from "playwright";
 import { config } from "@/lib/config";
 import { runCommand } from "@/lib/shell";
 import { ensureDir } from "@/lib/fs-utils";
+import { launchChromium } from "@/lib/playwright-browser";
 import type { QaTask, ReviewArtifact } from "@/lib/types";
 
 function escapeHtml(value: string) {
@@ -49,7 +49,7 @@ export async function createIntroCard(input: {
 }
 
 async function renderIntroCardImage(input: { imagePath: string; task: QaTask }) {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchChromium({ headless: true });
   const page = await browser.newPage({
     viewport: { width: 1440, height: 960 },
   });
