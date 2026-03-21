@@ -56,14 +56,23 @@ export async function runQaTask(input: {
   const video = page.video();
   page.setDefaultTimeout(20_000);
   page.setDefaultNavigationTimeout(45_000);
+  let videoPath = "";
 
-  for (const action of input.task.actions) {
-    await runAction(page, action, taskOutputDir);
+  try {
+    for (const action of input.task.actions) {
+      await runAction(page, action, taskOutputDir);
+    }
+  } catch (error) {
+    await page.screenshot({
+      path: path.join(taskOutputDir, "failure-state.png"),
+      fullPage: true,
+    });
+    throw error;
+  } finally {
+    await context.close();
+    videoPath = (await video?.path()) ?? "";
+    await browser.close();
   }
-
-  await context.close();
-  const videoPath = (await video?.path()) ?? "";
-  await browser.close();
 
   return {
     taskId: input.task.id,

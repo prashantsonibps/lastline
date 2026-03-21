@@ -56,6 +56,11 @@ export async function generateQaPlan(input: {
   pr: PullRequestRef;
   changedFiles: ChangedFile[];
 }) {
+  const curatedPlan = createCuratedPlan(input.repo);
+  if (curatedPlan) {
+    return curatedPlan;
+  }
+
   if (!config.googleApiKey) {
     return createFallbackPlan(input.changedFiles);
   }
@@ -91,6 +96,83 @@ export async function generateQaPlan(input: {
   });
 
   return normalizeQaTasks(object.tasks) satisfies QaTask[];
+}
+
+function createCuratedPlan(repo: RepoRef): QaTask[] | null {
+  const normalizedRepoName = repo.name.toLowerCase();
+
+  if (normalizedRepoName !== "spaceguard") {
+    return null;
+  }
+
+  return [
+    {
+      id: "spaceguard-globe-smoke",
+      title: "Globe Landing Smoke Test",
+      goal: "Verify the live landing experience renders the top navigation and live telemetry banner correctly.",
+      startUrl: "/",
+      steps: [
+        "Open the Globe landing page.",
+        "Verify the top navigation shows SPACEGUARD, GLOBE, MARKETS, and PORTFOLIO.",
+        "Verify the LIVE badge is visible.",
+        "Capture a screenshot of the landing experience.",
+      ],
+      expected: [
+        "The landing page loads successfully.",
+        "The top navigation and LIVE telemetry indicator are visible.",
+      ],
+      actions: [
+        { type: "goto", url: "/" },
+        { type: "waitForText", text: "SPACEGUARD" },
+        { type: "waitForText", text: "GLOBE" },
+        { type: "waitForText", text: "MARKETS" },
+        { type: "waitForText", text: "PORTFOLIO" },
+        { type: "waitForText", text: "LIVE" },
+        { type: "screenshot", name: "globe-landing" },
+      ],
+    },
+    {
+      id: "spaceguard-markets-smoke",
+      title: "Prediction Markets Smoke Test",
+      goal: "Verify the Markets page opens and at least one prediction market card is rendered.",
+      startUrl: "/prediction",
+      steps: [
+        "Open the Markets page.",
+        "Verify the MARKETS tab is active and at least one market question is visible.",
+        "Capture a screenshot of the rendered market list.",
+      ],
+      expected: [
+        "The Markets page loads successfully.",
+        "A prediction market question is visible on the page.",
+      ],
+      actions: [
+        { type: "goto", url: "/prediction" },
+        { type: "waitForText", text: "MARKETS" },
+        { type: "waitForText", text: "Will ISS" },
+        { type: "screenshot", name: "markets-view" },
+      ],
+    },
+    {
+      id: "spaceguard-portfolio-smoke",
+      title: "Portfolio Smoke Test",
+      goal: "Verify the Portfolio page opens and shows its primary heading.",
+      startUrl: "/portfolio",
+      steps: [
+        "Open the Portfolio page.",
+        "Verify the PORTFOLIO heading is visible.",
+        "Capture a screenshot of the portfolio view.",
+      ],
+      expected: [
+        "The Portfolio page loads successfully.",
+        "The primary PORTFOLIO heading is visible.",
+      ],
+      actions: [
+        { type: "goto", url: "/portfolio" },
+        { type: "waitForText", text: "PORTFOLIO" },
+        { type: "screenshot", name: "portfolio-view" },
+      ],
+    },
+  ];
 }
 
 function createFallbackPlan(changedFiles: ChangedFile[]): QaTask[] {
