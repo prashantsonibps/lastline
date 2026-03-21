@@ -106,17 +106,18 @@ async function telegramApi(method: string, body: Record<string, unknown>) {
     body: JSON.stringify(body),
   });
 
-  if (!response.ok) {
-    throw new Error(`Telegram API returned ${response.status} for ${method}.`);
-  }
-
   const payload = (await response.json()) as {
     ok: boolean;
+    description?: string;
     result?: Record<string, unknown>;
   };
 
-  if (!payload.ok) {
-    throw new Error(`Telegram API returned a non-ok response for ${method}.`);
+  if (!response.ok || !payload.ok) {
+    throw new Error(
+      payload.description
+        ? `Telegram API returned ${response.status} for ${method}: ${payload.description}`
+        : `Telegram API returned ${response.status} for ${method}.`,
+    );
   }
 
   return payload.result ?? {};
@@ -159,6 +160,39 @@ async function editBoardMessage(input: {
   });
 }
 
+async function upsertBoardMessage(input: {
+  chatId: string | number;
+  threadId?: number;
+  messageId?: number | null;
+  state: TicTacToeState;
+  message: string;
+}) {
+  if (input.messageId) {
+    try {
+      await editBoardMessage({
+        chatId: input.chatId,
+        messageId: input.messageId,
+        state: input.state,
+        message: input.message,
+      });
+      return input.messageId;
+    } catch (error) {
+      console.warn("[telegram:tictactoe] edit failed, sending fresh board", {
+        chatId: input.chatId,
+        messageId: input.messageId,
+        error: error instanceof Error ? error.message : "unknown",
+      });
+    }
+  }
+
+  return sendBoardMessage({
+    chatId: input.chatId,
+    threadId: input.threadId,
+    state: input.state,
+    message: input.message,
+  });
+}
+
 async function sendPlainMessage(chatId: string | number, threadId: number | undefined, text: string) {
   await telegramApi("sendMessage", {
     chat_id: chatId,
@@ -179,11 +213,16 @@ export async function tryHandleTelegramTicTacToe(update: TelegramUpdate) {
     const existingState = await getTicTacToeState(threadId);
 
     if (existingState?.status === "active" && existingState.lastBoardMessageId) {
-      await editBoardMessage({
+      const boardMessageId = await upsertBoardMessage({
         chatId: update.message.chat.id,
+        threadId: update.message.message_thread_id,
         messageId: Number(existingState.lastBoardMessageId),
         state: existingState,
         message: "Game already in progress. You are X and I am O.",
+      });
+      await setTicTacToeState(threadId, {
+        ...existingState,
+        lastBoardMessageId: String(boardMessageId),
       });
       return true;
     }
@@ -233,15 +272,16 @@ export async function tryHandleTelegramTicTacToe(update: TelegramUpdate) {
 
   if (callback.data === TICTACTOE_PLAY_AGAIN_ACTION_ID) {
     const state = createNewTicTacToeState();
-    await setTicTacToeState(threadId, {
-      ...state,
-      lastBoardMessageId: String(callback.message.message_id),
-    });
-    await editBoardMessage({
+    const boardMessageId = await upsertBoardMessage({
       chatId: callback.message.chat.id,
+      threadId: callback.message.message_thread_id,
       messageId: callback.message.message_id,
       state,
       message: "Fresh board. You are X again.",
+    });
+    await setTicTacToeState(threadId, {
+      ...state,
+      lastBoardMessageId: String(boardMessageId),
     });
     await answerCallbackQuery(callback.id, "Fresh board");
     return true;
@@ -276,14 +316,18 @@ export async function tryHandleTelegramTicTacToe(update: TelegramUpdate) {
   if (afterHumanMove.status === "finished") {
     const finalState = {
       ...afterHumanMove,
-      lastBoardMessageId: String(callback.message.message_id),
     };
-    await setTicTacToeState(threadId, finalState);
-    await editBoardMessage({
+    const boardMessageId = await upsertBoardMessage({
       chatId: callback.message.chat.id,
-      messageId: callback.message.message_id,
+      threadId: callback.message.message_thread_id,
+      messageId: Number(currentState.lastBoardMessageId ?? callback.message.message_id),
       state: finalState,
       message: "You locked in your move.",
+    });
+    await setTicTacToeState(threadId, finalState);
+    await setTicTacToeState(threadId, {
+      ...finalState,
+      lastBoardMessageId: String(boardMessageId),
     });
     await answerCallbackQuery(callback.id, "Move saved");
     return true;
@@ -302,16 +346,19 @@ export async function tryHandleTelegramTicTacToe(update: TelegramUpdate) {
 
   finalState = {
     ...finalState,
-    lastBoardMessageId: String(callback.message.message_id),
     lastCommentary: botTurn.quip ?? null,
   };
 
-  await setTicTacToeState(threadId, finalState);
-  await editBoardMessage({
+  const boardMessageId = await upsertBoardMessage({
     chatId: callback.message.chat.id,
-    messageId: callback.message.message_id,
+    threadId: callback.message.message_thread_id,
+    messageId: Number(currentState.lastBoardMessageId ?? callback.message.message_id),
     state: finalState,
     message: botTurn.quip?.trim() || "I made my move.",
+  });
+  await setTicTacToeState(threadId, {
+    ...finalState,
+    lastBoardMessageId: String(boardMessageId),
   });
   await answerCallbackQuery(callback.id, "Move saved");
   return true;
