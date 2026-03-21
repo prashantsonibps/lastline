@@ -2,7 +2,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { config } from "@/lib/config";
 import { ensureDir, listDirectories, pathExists, readJson, writeJson } from "@/lib/fs-utils";
-import type { ChangedFile, RepoRef, ReviewJob } from "@/lib/types";
+import type { ChangedFile, RepoRef, ReviewJob, ReviewRuntimeConfig } from "@/lib/types";
 
 const JOB_FILE_NAME = "job.json";
 
@@ -18,6 +18,7 @@ function createBaseJob(input: {
   repo: RepoRef;
   pr: ReviewJob["pr"];
   changedFiles: ChangedFile[];
+  runtime?: ReviewRuntimeConfig;
 }) {
   const id = randomUUID();
   const createdAt = new Date().toISOString();
@@ -28,6 +29,7 @@ function createBaseJob(input: {
     repo: input.repo,
     pr: input.pr,
     changedFiles: input.changedFiles,
+    runtime: input.runtime ?? {},
     status: "queued",
     tasks: [],
     createdAt,
@@ -47,6 +49,7 @@ export async function createManualReviewJob(input: {
   repo: RepoRef;
   pr: ReviewJob["pr"];
   changedFiles: ChangedFile[];
+  runtime?: ReviewRuntimeConfig;
 }) {
   const job = createBaseJob(input);
   await persistReviewJob(job);
@@ -93,4 +96,3 @@ export async function listReviewJobs() {
     .filter((job): job is ReviewJob => Boolean(job))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
-

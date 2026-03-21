@@ -1,5 +1,5 @@
 import { generateObject } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { z } from "zod";
 import { config } from "@/lib/config";
 import type { ChangedFile, PullRequestRef, QaTask, RepoRef } from "@/lib/types";
@@ -56,16 +56,16 @@ export async function generateQaPlan(input: {
   pr: PullRequestRef;
   changedFiles: ChangedFile[];
 }) {
-  if (!config.openaiApiKey) {
+  if (!config.googleApiKey) {
     return createFallbackPlan(input.changedFiles);
   }
 
-  const openai = createOpenAI({
-    apiKey: config.openaiApiKey,
+  const google = createGoogleGenerativeAI({
+    apiKey: config.googleApiKey,
   });
 
   const { object } = await generateObject({
-    model: openai(config.qaModel),
+    model: google(config.qaModel),
     schema: qaTaskSchema,
     temperature: 0.2,
     system: [
@@ -125,4 +125,3 @@ function createFallbackPlan(changedFiles: ChangedFile[]): QaTask[] {
     },
   ];
 }
-

@@ -20,6 +20,19 @@ export type RepoRef = {
   defaultBranch?: string;
 };
 
+export type CommandSpec = {
+  command: string;
+  args: string[];
+};
+
+export type ReviewRuntimeConfig = {
+  appDirectory?: string;
+  installCommand?: CommandSpec;
+  startCommand?: CommandSpec;
+  env?: Record<string, string>;
+  startTimeoutMs?: number;
+};
+
 export type ReviewJobStatus =
   | "queued"
   | "running"
@@ -63,6 +76,7 @@ export type ReviewJob = {
   repo: RepoRef;
   pr: PullRequestRef;
   changedFiles: ChangedFile[];
+  runtime: ReviewRuntimeConfig;
   status: ReviewJobStatus;
   tasks: QaTask[];
   createdAt: string;
@@ -73,4 +87,3 @@ export type ReviewJob = {
   error?: string;
   artifacts?: ReviewArtifacts;
 };
-

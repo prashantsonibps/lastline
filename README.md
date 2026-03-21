@@ -15,17 +15,50 @@ PR review video agent scaffold for the hackathon MVP.
 
 ## Environment
 
-Create `.env.local` with:
+`.env.local` is already scaffolded for you. Fill it in locally, and mirror the same keys in Vercel project env vars and GitHub Actions secrets.
+
+The checked-in template lives at [.env.example](/Users/prashantsoni/Desktop/Vercel*Deepmind_hackathon/.env.example).
+
+Current env shape:
 
 ```bash
-OPENAI_API_KEY=
-OPENAI_QA_MODEL=gpt-4.1
+GEMINI_API_KEY=
+GEMINI_QA_MODEL=gemini-2.5-pro
 GITHUB_TOKEN=
 GITHUB_WEBHOOK_SECRET=
-APP_BASE_URL=http://127.0.0.1:3000
 APP_PORT=3000
 REVIEW_APP_BASE_URL=http://127.0.0.1:3100
 FFMPEG_PATH=ffmpeg
+```
+
+## Deployment
+
+- Vercel should host this Next.js control app.
+- GitHub webhook should point to `/api/github/pr-webhook` on the deployed app.
+- Use the same env names locally, in Vercel, and in GitHub Actions to avoid config drift.
+- Person 2’s planning notes and the shared implementation split are in [docs/hackathon-plan.md](/Users/prashantsoni/Desktop/Vercel*Deepmind_hackathon/docs/hackathon-plan.md).
+
+## Manual run
+
+1. Start this control app:
+
+```bash
+npm install
+npm run dev
+```
+
+2. Post the sample payload:
+
+```bash
+curl -X POST http://localhost:3000/api/reviews/run \
+  -H "Content-Type: application/json" \
+  --data @examples/spaceguard-manual-run.json
+```
+
+3. Poll the job:
+
+```bash
+curl http://localhost:3000/api/reviews/<job-id>
 ```
 
 ## Next steps

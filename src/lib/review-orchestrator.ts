@@ -41,7 +41,7 @@ export async function executeReviewJob(jobId: string) {
 
   try {
     const job = (await getReviewJob(jobId))!;
-    await prepareWorkspace(job, log);
+    const workspace = await prepareWorkspace(job, log);
 
     const qaTasks = await generateQaPlan({
       repo: job.repo,
@@ -55,8 +55,9 @@ export async function executeReviewJob(jobId: string) {
     }));
 
     serverHandle = await startDevServer({
-      workspaceDir: job.workspaceDir,
+      appDir: workspace.appDir,
       baseUrl: config.reviewAppBaseUrl,
+      runtime: job.runtime,
       onLog: log,
     });
 

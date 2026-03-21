@@ -1,0 +1,35 @@
+{
+  "repo": {
+    "owner": "prashantsonibps",
+    "name": "SpaceGuard",
+    "cloneUrl": "https://github.com/prashantsonibps/SpaceGuard.git"
+  },
+  "pr": {
+    "number": 9999,
+    "title": "Manual SpaceGuard frontend review",
+    "body": "Smoke-test the current frontend as a local end-to-end validation run.",
+    "headRef": "main",
+    "baseRef": "main",
+    "headSha": "manual-spaceguard-run"
+  },
+  "changedFiles": [
+    {
+      "filename": "frontend/src/app/page.tsx",
+      "status": "modified",
+      "patch": "Manual smoke target for homepage review"
+    },
+    {
+      "filename": "frontend/src/components/Dashboard/FinancialTerminal.tsx",
+      "status": "modified",
+      "patch": "Manual smoke target for dashboard validation"
+    }
+  ],
+  "runtime": {
+    "appDirectory": "frontend",
+    "env": {
+      "NEXT_PUBLIC_API_URL": "https://spaceguard-api-1040980823268.us-central1.run.app"
+    },
+    "startTimeoutMs": 180000
+  }
+}
+

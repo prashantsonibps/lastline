@@ -10,6 +10,6 @@ export const config = {
   ffmpegPath: process.env.FFMPEG_PATH ?? "ffmpeg",
   githubWebhookSecret: process.env.GITHUB_WEBHOOK_SECRET,
   githubToken: process.env.GITHUB_TOKEN,
-  openaiApiKey: process.env.OPENAI_API_KEY,
-  qaModel: process.env.OPENAI_QA_MODEL ?? "gpt-4.1",
+  googleApiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+  qaModel: process.env.GEMINI_QA_MODEL ?? "gemini-2.5-pro",
 } as const;

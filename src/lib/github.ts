@@ -108,6 +108,7 @@ export async function createJobFromPullRequestEvent(event: PullRequestEvent) {
       headSha: event.pull_request.head.sha,
     },
     changedFiles,
+    runtime: {},
   });
 }
 
@@ -129,4 +130,3 @@ export function hasPotentialVisualChanges(filenames: string[]) {
     ].some((needle) => filename.includes(needle)),
   );
 }
-

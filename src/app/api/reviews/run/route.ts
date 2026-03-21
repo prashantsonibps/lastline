@@ -26,6 +26,25 @@ const manualRunSchema = z.object({
       }),
     )
     .default([]),
+  runtime: z
+    .object({
+      appDirectory: z.string().min(1).optional(),
+      installCommand: z
+        .object({
+          command: z.string().min(1),
+          args: z.array(z.string()),
+        })
+        .optional(),
+      startCommand: z
+        .object({
+          command: z.string().min(1),
+          args: z.array(z.string()),
+        })
+        .optional(),
+      env: z.record(z.string(), z.string()).optional(),
+      startTimeoutMs: z.number().int().positive().max(300000).optional(),
+    })
+    .default({}),
 });
 
 export async function POST(request: NextRequest) {
@@ -38,4 +57,3 @@ export async function POST(request: NextRequest) {
     jobId: job.id,
   });
 }
-
