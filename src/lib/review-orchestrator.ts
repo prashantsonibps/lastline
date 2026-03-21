@@ -113,6 +113,7 @@ export async function executeReviewJob(jobId: string) {
         task,
         baseUrl: reviewBaseUrl,
         outputDir: job.outputDir,
+        onLog: log,
       });
       await createIntroCard({
         task,
