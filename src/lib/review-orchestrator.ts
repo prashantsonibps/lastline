@@ -182,13 +182,14 @@ export async function executeReviewJob(jobId: string) {
     }));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown review job failure.";
+    const failureLogLine = `[${new Date().toISOString()}] Job failed: ${message}`;
 
     await updateReviewJob(jobId, (current) => ({
       ...current,
       status: "failed",
       error: message,
+      logs: [...current.logs, failureLogLine],
     }));
-    await log(`Job failed: ${message}`);
   } finally {
     await serverHandle?.stop();
   }
