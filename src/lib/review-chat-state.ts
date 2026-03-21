@@ -1,6 +1,4 @@
-import path from "node:path";
-import { config } from "@/lib/config";
-import { ensureDir, pathExists, readJson, writeJson } from "@/lib/fs-utils";
+import { readDurableJson, writeDurableJson } from "@/lib/durable-json-store";
 
 export type ReviewChatThreadState = {
   activeJobId?: string;
@@ -13,7 +11,7 @@ export type ReviewChatThreadState = {
   updatedAt: string;
 };
 
-const THREAD_STATE_FILE = path.join(config.chatStateDir, "review-thread-state.json");
+const THREAD_STATE_FILE = "state/chat/review-thread-state.json";
 
 type ReviewThreadDatabase = Record<string, ReviewChatThreadState>;
 
@@ -24,18 +22,11 @@ function createEmptyDatabase(): ReviewThreadDatabase {
 }
 
 async function readDatabase() {
-  await ensureDir(config.chatStateDir);
-
-  if (!(await pathExists(THREAD_STATE_FILE))) {
-    return createEmptyDatabase();
-  }
-
-  return readJson<ReviewThreadDatabase>(THREAD_STATE_FILE);
+  return (await readDurableJson<ReviewThreadDatabase>(THREAD_STATE_FILE)) ?? createEmptyDatabase();
 }
 
 async function writeDatabase(database: ReviewThreadDatabase) {
-  await ensureDir(config.chatStateDir);
-  await writeJson(THREAD_STATE_FILE, database);
+  await writeDurableJson(THREAD_STATE_FILE, database);
 }
 
 function normalizeState(threadId: string, next?: Partial<ReviewChatThreadState>) {

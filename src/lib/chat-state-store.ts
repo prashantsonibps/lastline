@@ -1,8 +1,6 @@
-import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { Lock, StateAdapter } from "chat";
-import { config } from "@/lib/config";
-import { ensureDir, pathExists, readJson, writeJson } from "@/lib/fs-utils";
+import { readDurableJson, writeDurableJson } from "@/lib/durable-json-store";
 
 type StoredValue = {
   expiresAt?: number;
@@ -21,7 +19,7 @@ type ChatStateDatabase = {
   subscriptions: Record<string, true>;
 };
 
-const DATABASE_FILE = path.join(config.chatStateDir, "state.json");
+const DATABASE_FILE = "state/chat/state.json";
 
 function createEmptyDatabase(): ChatStateDatabase {
   return {
@@ -40,10 +38,8 @@ export class FileChatStateStore implements StateAdapter {
   private queue = Promise.resolve<void>(undefined);
 
   async connect() {
-    await ensureDir(config.chatStateDir);
-
-    if (!(await pathExists(DATABASE_FILE))) {
-      await writeJson(DATABASE_FILE, createEmptyDatabase());
+    if (!(await readDurableJson<ChatStateDatabase>(DATABASE_FILE))) {
+      await writeDurableJson(DATABASE_FILE, createEmptyDatabase());
     }
   }
 
@@ -206,7 +202,7 @@ export class FileChatStateStore implements StateAdapter {
       await this.connect();
       const database = await this.readDatabase();
       const [nextDatabase, nextResult] = await mutator(this.pruneExpired(database));
-      await writeJson(DATABASE_FILE, nextDatabase);
+      await writeDurableJson(DATABASE_FILE, nextDatabase);
       result = nextResult;
     });
 
@@ -215,11 +211,7 @@ export class FileChatStateStore implements StateAdapter {
   }
 
   private async readDatabase() {
-    if (!(await pathExists(DATABASE_FILE))) {
-      return createEmptyDatabase();
-    }
-
-    return readJson<ChatStateDatabase>(DATABASE_FILE);
+    return (await readDurableJson<ChatStateDatabase>(DATABASE_FILE)) ?? createEmptyDatabase();
   }
 
   private pruneExpired(database: ChatStateDatabase) {

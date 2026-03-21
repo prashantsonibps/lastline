@@ -1,18 +1,20 @@
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { config } from "@/lib/config";
-import { ensureDir, listDirectories, pathExists, readJson, writeJson } from "@/lib/fs-utils";
+import { ensureDir } from "@/lib/fs-utils";
+import { listDurableJsonPaths, readDurableJson, writeDurableJson } from "@/lib/durable-json-store";
 import type { ChangedFile, RepoRef, ReviewJob, ReviewRuntimeConfig } from "@/lib/types";
 
 const JOB_FILE_NAME = "job.json";
 const jobUpdateQueues = new Map<string, Promise<ReviewJob>>();
+const JOBS_STORE_PREFIX = "state/review-jobs";
 
 function getJobDir(jobId: string) {
   return path.join(config.jobsRootDir, jobId);
 }
 
 function getJobFile(jobId: string) {
-  return path.join(getJobDir(jobId), JOB_FILE_NAME);
+  return `${JOBS_STORE_PREFIX}/${jobId}/${JOB_FILE_NAME}`;
 }
 
 function createBaseJob(input: {
@@ -49,7 +51,7 @@ function createBaseJob(input: {
 
 export async function persistReviewJob(job: ReviewJob) {
   await ensureDir(getJobDir(job.id));
-  await writeJson(getJobFile(job.id), job);
+  await writeDurableJson(getJobFile(job.id), job);
 }
 
 export async function createManualReviewJob(input: {
@@ -64,13 +66,7 @@ export async function createManualReviewJob(input: {
 }
 
 export async function getReviewJob(jobId: string) {
-  const filePath = getJobFile(jobId);
-
-  if (!(await pathExists(filePath))) {
-    return null;
-  }
-
-  return readJson<ReviewJob>(filePath);
+  return readDurableJson<ReviewJob>(getJobFile(jobId));
 }
 
 export async function updateReviewJob(jobId: string, updater: (job: ReviewJob) => ReviewJob | Promise<ReviewJob>) {
@@ -111,8 +107,14 @@ export async function appendJobLog(jobId: string, message: string) {
 }
 
 export async function listReviewJobs() {
-  await ensureDir(config.jobsRootDir);
-  const jobIds = await listDirectories(config.jobsRootDir);
+  const jobPaths = await listDurableJsonPaths(JOBS_STORE_PREFIX);
+  const jobIds = Array.from(
+    new Set(
+      jobPaths
+        .map((pathname) => pathname.match(/^state\/review-jobs\/([^/]+)\/job\.json$/)?.[1])
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
   const jobs = await Promise.all(jobIds.map((jobId) => getReviewJob(jobId)));
 
   return jobs
