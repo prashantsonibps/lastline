@@ -263,11 +263,22 @@ async function startOrResumeTicTacToe(thread: Thread<unknown, unknown>) {
 }
 
 async function maybeStartTicTacToe(thread: Thread<unknown, unknown>, text: string) {
-  if (!isTicTacToeStartMessage(text)) {
+  const shouldStart = isTicTacToeStartMessage(text);
+
+  console.log("[telegram:tictactoe] trigger check", {
+    threadId: thread.id,
+    text,
+    shouldStart,
+  });
+
+  if (!shouldStart) {
     return false;
   }
 
   await startOrResumeTicTacToe(thread);
+  console.log("[telegram:tictactoe] started", {
+    threadId: thread.id,
+  });
   return true;
 }
 
@@ -275,6 +286,11 @@ async function handleTicTacToeAction(event: ActionEvent) {
   if (!event.thread) {
     return;
   }
+
+  console.log("[telegram:tictactoe] action", {
+    threadId: event.thread.id,
+    actionId: event.actionId,
+  });
 
   if (event.actionId === TICTACTOE_RESET_ACTION_ID) {
     await clearTicTacToeState(event.thread.id);
