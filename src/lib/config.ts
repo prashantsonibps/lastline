@@ -1,9 +1,20 @@
 import path from "node:path";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
 
 const rootDir = process.cwd();
 const defaultJobsRootDir = process.env.VERCEL
   ? path.join("/tmp", "lastline-review-jobs")
   : path.join(rootDir, ".review-jobs");
+
+const bundledFfmpegPath = (() => {
+  try {
+    return require("ffmpeg-static") as string | null;
+  } catch {
+    return null;
+  }
+})();
 
 export const config = {
   rootDir,
@@ -11,7 +22,7 @@ export const config = {
   chatStateDir: path.join(process.env.JOBS_ROOT_DIR ?? defaultJobsRootDir, "_chat"),
   appPort: Number(process.env.APP_PORT ?? "3000"),
   reviewAppBaseUrl: process.env.REVIEW_APP_BASE_URL ?? "http://127.0.0.1:3100",
-  ffmpegPath: process.env.FFMPEG_PATH ?? "ffmpeg",
+  ffmpegPath: process.env.FFMPEG_PATH ?? bundledFfmpegPath ?? "ffmpeg",
   aiGatewayApiKey: process.env.AI_GATEWAY_API_KEY,
   blobToken: process.env.BLOB_READ_WRITE_TOKEN,
   githubWebhookSecret: process.env.GITHUB_WEBHOOK_SECRET,
