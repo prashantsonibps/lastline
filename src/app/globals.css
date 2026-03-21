@@ -1,0 +1,37 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b1020;
+  --bg-soft: #131b32;
+  --text: #eff3ff;
+  --muted: #a1b0d2;
+  --accent: #7cf4c3;
+  --border: rgba(161, 176, 210, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top, rgba(124, 244, 195, 0.12), transparent 35%),
+    linear-gradient(180deg, #0b1020 0%, #060914 100%);
+  color: var(--text);
+  font-family: "SF Pro Display", "Segoe UI", sans-serif;
+}
+
+body {
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+}
+
+code {
+  font-family: "SF Mono", "Roboto Mono", monospace;
+}
+

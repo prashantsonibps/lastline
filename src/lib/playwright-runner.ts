@@ -1,0 +1,71 @@
+import path from "node:path";
+import { chromium, type Page } from "playwright";
+import { ensureDir } from "@/lib/fs-utils";
+import type { QaAction, QaTask, ReviewArtifact } from "@/lib/types";
+
+async function runAction(page: Page, action: QaAction, taskOutputDir: string) {
+  switch (action.type) {
+    case "goto":
+      await page.goto(action.url, { waitUntil: "networkidle" });
+      return;
+    case "click":
+      await page.locator(action.selector).first().click();
+      return;
+    case "fill":
+      await page.locator(action.selector).first().fill(action.value);
+      return;
+    case "press":
+      await page.locator(action.selector).first().press(action.key);
+      return;
+    case "waitForSelector":
+      await page.locator(action.selector).first().waitFor({ state: "visible" });
+      return;
+    case "waitForText":
+      await page.getByText(action.text, { exact: false }).first().waitFor();
+      return;
+    case "screenshot":
+      await page.screenshot({
+        path: path.join(taskOutputDir, `${action.name}.png`),
+        fullPage: true,
+      });
+      return;
+    case "sleep":
+      await page.waitForTimeout(action.ms);
+      return;
+  }
+}
+
+export async function runQaTask(input: {
+  task: QaTask;
+  baseUrl: string;
+  outputDir: string;
+}): Promise<ReviewArtifact> {
+  const taskOutputDir = path.join(input.outputDir, input.task.id);
+  await ensureDir(taskOutputDir);
+
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({
+    baseURL: input.baseUrl,
+    viewport: { width: 1440, height: 960 },
+    recordVideo: {
+      dir: taskOutputDir,
+      size: { width: 1440, height: 960 },
+    },
+  });
+  const page = await context.newPage();
+  const video = page.video();
+
+  for (const action of input.task.actions) {
+    await runAction(page, action, taskOutputDir);
+  }
+
+  await context.close();
+  const videoPath = (await video?.path()) ?? "";
+  await browser.close();
+
+  return {
+    taskId: input.task.id,
+    introCardPath: path.join(taskOutputDir, "intro.mp4"),
+    videoPath,
+  };
+}
