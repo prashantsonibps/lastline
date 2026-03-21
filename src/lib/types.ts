@@ -11,6 +11,7 @@ export type PullRequestRef = {
   headRef: string;
   baseRef: string;
   headSha: string;
+  url?: string;
 };
 
 export type RepoRef = {
@@ -35,10 +36,16 @@ export type ReviewRuntimeConfig = {
 
 export type ReviewJobStatus =
   | "queued"
-  | "running"
-  | "completed"
+  | "planning"
+  | "testing"
+  | "video_ready"
+  | "awaiting_feedback"
+  | "creating_issues"
+  | "done"
   | "failed"
-  | "ignored";
+  | "ignored"
+  | "running"
+  | "completed";
 
 export type QaAction =
   | { type: "goto"; url: string }
@@ -69,6 +76,66 @@ export type ReviewArtifact = {
 export type ReviewArtifacts = {
   taskArtifacts: ReviewArtifact[];
   finalVideoPath?: string;
+  finalVideoUrl?: string;
+};
+
+export type TelegramActionId = "report_bug" | "add_another" | "create_issues";
+
+export type TelegramBinding = {
+  chatId: string;
+  deliveryMessageId: string;
+  threadId?: string;
+  lastPromptMessageId?: string;
+};
+
+export type FeedbackConversationState =
+  | {
+      step: "idle";
+    }
+  | {
+      step: "awaiting_timestamp";
+    }
+  | {
+      step: "awaiting_description";
+      timestampInput: string;
+      timestampSeconds: number;
+    };
+
+export type ScreenshotArtifact = {
+  timestampSeconds: number;
+  status: "ready" | "failed";
+  assetUrl?: string;
+  error?: string;
+};
+
+export type CreatedIssueRef = {
+  findingId: string;
+  issueNumber: number;
+  issueUrl: string;
+  title: string;
+};
+
+export type FeedbackFinding = {
+  id: string;
+  createdAt: string;
+  timestampInput: string;
+  timestampSeconds: number;
+  description: string;
+  screenshot?: ScreenshotArtifact;
+  issue?: CreatedIssueRef;
+};
+
+export type FeedbackState = {
+  delivery?: {
+    deliveredAt: string;
+    summary: string;
+    videoUrl: string;
+  };
+  telegram?: TelegramBinding;
+  conversation: FeedbackConversationState;
+  findings: FeedbackFinding[];
+  screenshotsByTimestamp: Record<string, ScreenshotArtifact>;
+  createdIssues: CreatedIssueRef[];
 };
 
 export type ReviewJob = {
@@ -86,4 +153,5 @@ export type ReviewJob = {
   logs: string[];
   error?: string;
   artifacts?: ReviewArtifacts;
+  feedback?: FeedbackState;
 };

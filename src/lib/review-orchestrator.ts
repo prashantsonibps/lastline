@@ -25,11 +25,11 @@ export async function executeReviewJob(jobId: string) {
     return;
   }
 
-  await updateReviewJob(jobId, (job) => ({
-    ...job,
-    status: "running",
-    error: undefined,
-  }));
+    await updateReviewJob(jobId, (job) => ({
+      ...job,
+      status: "planning",
+      error: undefined,
+    }));
 
   const log = async (message: string) => {
     if (message.length > 0) {
@@ -51,6 +51,7 @@ export async function executeReviewJob(jobId: string) {
 
     await updateReviewJob(jobId, (current) => ({
       ...current,
+      status: "testing",
       tasks: qaTasks,
     }));
 
@@ -86,10 +87,21 @@ export async function executeReviewJob(jobId: string) {
 
     await updateReviewJob(jobId, (current) => ({
       ...current,
-      status: "completed",
+      status: "video_ready",
       artifacts: {
         taskArtifacts: artifacts,
         finalVideoPath,
+        finalVideoUrl: finalVideoPath,
+      },
+      pr: {
+        ...current.pr,
+        url: current.pr.url ?? `https://github.com/${current.repo.owner}/${current.repo.name}/pull/${current.pr.number}`,
+      },
+      feedback: current.feedback ?? {
+        conversation: { step: "idle" },
+        findings: [],
+        screenshotsByTimestamp: {},
+        createdIssues: [],
       },
     }));
   } catch (error) {

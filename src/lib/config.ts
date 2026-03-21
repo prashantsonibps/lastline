@@ -12,4 +12,8 @@ export const config = {
   githubToken: process.env.GITHUB_TOKEN,
   googleApiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   qaModel: process.env.GEMINI_QA_MODEL ?? "gemini-2.5-pro",
+  feedbackModel: process.env.GEMINI_FEEDBACK_MODEL ?? process.env.GEMINI_QA_MODEL ?? "gemini-2.5-pro",
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
+  telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET,
+  telegramDefaultChatId: process.env.TELEGRAM_DEFAULT_CHAT_ID,
 } as const;

@@ -24,11 +24,15 @@ Current env shape:
 ```bash
 GEMINI_API_KEY=
 GEMINI_QA_MODEL=gemini-2.5-pro
+GEMINI_FEEDBACK_MODEL=gemini-2.5-pro
 GITHUB_TOKEN=
 GITHUB_WEBHOOK_SECRET=
 APP_PORT=3000
 REVIEW_APP_BASE_URL=http://127.0.0.1:3100
 FFMPEG_PATH=ffmpeg
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_DEFAULT_CHAT_ID=
+TELEGRAM_WEBHOOK_SECRET=
 ```
 
 ## Deployment
@@ -59,6 +63,14 @@ curl -X POST http://localhost:3000/api/reviews/run \
 
 ```bash
 curl http://localhost:3000/api/reviews/<job-id>
+```
+
+4. Start feedback delivery for a `video_ready` job:
+
+```bash
+curl -X POST http://localhost:3000/api/reviews/<job-id>/feedback/start \
+  -H "Content-Type: application/json" \
+  --data '{"chatId":"<telegram-chat-id>"}'
 ```
 
 ## Next steps

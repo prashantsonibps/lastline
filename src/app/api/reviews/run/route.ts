@@ -16,6 +16,7 @@ const manualRunSchema = z.object({
     headRef: z.string().min(1),
     baseRef: z.string().min(1),
     headSha: z.string().min(1),
+    url: z.string().url().optional(),
   }),
   changedFiles: z
     .array(
