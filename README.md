@@ -27,10 +27,18 @@ GEMINI_API_KEY=
 GEMINI_QA_MODEL=gemini-2.5-pro
 GITHUB_TOKEN=
 GITHUB_WEBHOOK_SECRET=
+BLOB_READ_WRITE_TOKEN=
 APP_PORT=3000
 REVIEW_APP_BASE_URL=http://127.0.0.1:3100
 FFMPEG_PATH=ffmpeg
 ```
+
+## Vercel Blob
+
+1. In Vercel, create or connect a Blob store to this project.
+2. Add `BLOB_READ_WRITE_TOKEN` to the project env vars.
+3. Add the same token to local `.env.local` for local uploads.
+4. When configured, the stitched final review video uploads automatically and `handoff.stitchedVideo` becomes a durable public URL.
 
 ## Deployment
 
@@ -39,6 +47,7 @@ FFMPEG_PATH=ffmpeg
 - Use the same env names locally, in Vercel, and in GitHub Actions to avoid config drift.
 - Person 2’s planning notes and the shared implementation split are in [docs/hackathon-plan.md](/Users/prashantsoni/Desktop/Vercel*Deepmind_hackathon/docs/hackathon-plan.md).
 - The machine-side and feedback-side reconciliation contract is in [docs/integration-contract.md](/Users/prashantsoni/Desktop/Vercel*Deepmind_hackathon/docs/integration-contract.md).
+- Person 2’s API contract and handoff brief are in [docs/person2-integration.md](/Users/prashantsoni/Desktop/Vercel*Deepmind_hackathon/docs/person2-integration.md).
 
 ## Manual run
 
@@ -64,6 +73,12 @@ curl http://localhost:3000/api/reviews/<job-id>
 ```
 
 When the machine-side flow succeeds, the run will move into `video_ready` and expose a `handoff` block containing PR metadata, ordered QA task summaries, and the stitched video artifact reference for Person 2’s feedback agent.
+
+You can also fetch the distilled handoff payload directly:
+
+```bash
+curl http://localhost:3000/api/reviews/<job-id>/handoff
+```
 
 ## Next steps
 

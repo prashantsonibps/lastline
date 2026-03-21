@@ -1,5 +1,6 @@
 import { config } from "@/lib/config";
 import { startDevServer } from "@/lib/dev-server";
+import { uploadFinalVideoArtifact } from "@/lib/blob";
 import { hasPotentialVisualChanges } from "@/lib/github";
 import { runQaTask } from "@/lib/playwright-runner";
 import { generateQaPlan } from "@/lib/qa-plan";
@@ -111,13 +112,27 @@ export async function executeReviewJob(jobId: string) {
       outputDir: job.outputDir,
       onLog: log,
     });
+    const uploadedFinalVideo =
+      (await uploadFinalVideoArtifact({
+        filePath: finalVideoPath,
+        repoOwner: job.repo.owner,
+        repoName: job.repo.name,
+        prNumber: job.pr.number,
+        jobId: job.id,
+      })) ?? createLocalVideoArtifact(finalVideoPath);
+
+    if (uploadedFinalVideo.kind === "remote_url") {
+      await log(`Uploaded stitched video to ${uploadedFinalVideo.location}`);
+    } else {
+      await log("Blob upload not configured; keeping stitched video as a local artifact path");
+    }
 
     await updateReviewJob(jobId, (current) => ({
       ...current,
       status: "video_ready",
       artifacts: {
         taskArtifacts: artifacts,
-        finalVideo: createLocalVideoArtifact(finalVideoPath),
+        finalVideo: uploadedFinalVideo,
       },
       handoff: {
         repo: {
@@ -131,7 +146,7 @@ export async function executeReviewJob(jobId: string) {
         },
         commitSha: current.pr.headSha,
         qaTaskSummaries: buildTaskSummaries(current.tasks),
-        stitchedVideo: createLocalVideoArtifact(finalVideoPath),
+        stitchedVideo: uploadedFinalVideo,
       },
     }));
   } catch (error) {
