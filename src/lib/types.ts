@@ -156,6 +156,7 @@ export type FeedbackState = {
   telegram?: TelegramBinding;
   conversation: FeedbackConversationState;
   telegramChatId?: string;
+  telegramMessageId?: string;
   videoDeliveredAt?: string;
   findings: FeedbackFinding[];
   screenshotsByTimestamp: Record<string, ScreenshotArtifact>;

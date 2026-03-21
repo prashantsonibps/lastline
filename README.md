@@ -29,6 +29,7 @@ GEMINI_FEEDBACK_MODEL=gemini-2.5-pro
 GITHUB_TOKEN=
 GITHUB_WEBHOOK_SECRET=
 BLOB_READ_WRITE_TOKEN=
+JOBS_ROOT_DIR=
 APP_PORT=3000
 REVIEW_APP_BASE_URL=http://127.0.0.1:3100
 FFMPEG_PATH=ffmpeg
@@ -36,6 +37,8 @@ TELEGRAM_BOT_TOKEN=
 TELEGRAM_DEFAULT_CHAT_ID=
 TELEGRAM_WEBHOOK_SECRET=
 ```
+
+On Vercel, runtime job files should live in `/tmp`. The app now defaults to `/tmp/lastline-review-jobs` automatically when deployed. `JOBS_ROOT_DIR` is optional and mainly useful if you want to override that path locally.
 
 ## Vercel Blob
 
@@ -92,6 +95,13 @@ curl -X POST http://localhost:3000/api/reviews/<job-id>/feedback/start \
 
 When the machine-side flow succeeds, the run will move into `video_ready` and expose a `handoff` block containing PR metadata, ordered QA task summaries, and the stitched video artifact reference for Person 2’s feedback agent.
 
+6. Person 2 can write feedback state back onto the same run through:
+
+```bash
+curl -X POST http://localhost:3000/api/reviews/<job-id>/feedback \
+  -H "Content-Type: application/json" \
+  -d '{"action":"save_finding","timestampText":"1:13","note":"Heading color is wrong in light mode."}'
+```
 ## Next steps
 
 - Install dependencies
