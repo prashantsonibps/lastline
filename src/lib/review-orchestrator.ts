@@ -60,6 +60,7 @@ export async function executeReviewJob(jobId: string) {
   try {
     const job = (await getReviewJob(jobId))!;
     const workspace = await prepareWorkspace(job, log);
+    const reviewBaseUrl = job.runtime.reviewBaseUrl ?? config.reviewAppBaseUrl;
 
     const qaTasks = await generateQaPlan({
       repo: job.repo,
@@ -77,12 +78,16 @@ export async function executeReviewJob(jobId: string) {
       status: "testing",
     }));
 
-    serverHandle = await startDevServer({
-      appDir: workspace.appDir,
-      baseUrl: config.reviewAppBaseUrl,
-      runtime: job.runtime,
-      onLog: log,
-    });
+    if (job.runtime.skipAppStart) {
+      await log(`Skipping local app start and using review base URL ${reviewBaseUrl}`);
+    } else {
+      serverHandle = await startDevServer({
+        appDir: workspace.appDir,
+        baseUrl: reviewBaseUrl,
+        runtime: job.runtime,
+        onLog: log,
+      });
+    }
 
     const artifacts: ReviewArtifact[] = [];
 
@@ -90,7 +95,7 @@ export async function executeReviewJob(jobId: string) {
       await log(`Running QA task ${task.id}: ${task.title}`);
       const artifact = await runQaTask({
         task,
-        baseUrl: config.reviewAppBaseUrl,
+        baseUrl: reviewBaseUrl,
         outputDir: job.outputDir,
       });
       await createIntroCard({

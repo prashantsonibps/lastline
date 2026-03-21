@@ -27,6 +27,9 @@
   ],
   "runtime": {
     "appDirectory": "frontend",
+    "reviewBaseUrl": "https://spaceguard-a0dbc.web.app",
+    "skipInstall": true,
+    "skipAppStart": true,
     "env": {
       "NEXT_PUBLIC_API_URL": "https://spaceguard-api-1040980823268.us-central1.run.app"
     },

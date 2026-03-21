@@ -32,6 +32,9 @@ export type ReviewRuntimeConfig = {
   startCommand?: CommandSpec;
   env?: Record<string, string>;
   startTimeoutMs?: number;
+  reviewBaseUrl?: string;
+  skipInstall?: boolean;
+  skipAppStart?: boolean;
 };
 
 export type ReviewJobStatus =

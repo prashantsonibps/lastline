@@ -44,6 +44,9 @@ const manualRunSchema = z.object({
         .optional(),
       env: z.record(z.string(), z.string()).optional(),
       startTimeoutMs: z.number().int().positive().max(300000).optional(),
+      reviewBaseUrl: z.string().url().optional(),
+      skipInstall: z.boolean().optional(),
+      skipAppStart: z.boolean().optional(),
     })
     .default({}),
 });

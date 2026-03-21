@@ -120,9 +120,12 @@ export async function prepareWorkspace(job: ReviewJob, onLog: (message: string) 
 
   const appDir = await detectAppDirectory(job.workspaceDir, job.runtime.appDirectory);
   await onLog(`Detected app directory: ${path.relative(job.workspaceDir, appDir) || "."}`);
-  const installCommand = await detectInstallCommand(appDir, job.runtime.installCommand);
-
-  await installDependencies(appDir, installCommand, onLog);
+  if (job.runtime.skipInstall) {
+    await onLog("Skipping dependency installation because runtime.skipInstall is enabled");
+  } else {
+    const installCommand = await detectInstallCommand(appDir, job.runtime.installCommand);
+    await installDependencies(appDir, installCommand, onLog);
+  }
   return { appDir };
 }
 

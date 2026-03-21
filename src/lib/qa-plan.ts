@@ -90,7 +90,7 @@ export async function generateQaPlan(input: {
     ].join("\n"),
   });
 
-  return object.tasks satisfies QaTask[];
+  return normalizeQaTasks(object.tasks) satisfies QaTask[];
 }
 
 function createFallbackPlan(changedFiles: ChangedFile[]): QaTask[] {
@@ -111,17 +111,54 @@ function createFallbackPlan(changedFiles: ChangedFile[]): QaTask[] {
       steps: [
         `Open ${startUrl}.`,
         "Wait for the page to settle.",
+        "Wait for at least one heading or prominent text block to appear.",
         "Capture a screenshot of the rendered UI.",
       ],
       expected: [
         "The page loads successfully.",
-        "Primary headings, actions, and layout are visible.",
+        "Prominent content and primary layout are visible.",
       ],
       actions: [
         { type: "goto", url: startUrl },
         { type: "sleep", ms: 1500 },
+        { type: "waitForSelector", selector: "h1, h2, main, nav" },
         { type: "screenshot", name: "landing-state" },
       ],
     },
   ];
+}
+
+function normalizeQaTasks(tasks: QaTask[]) {
+  return tasks.map((task) => ({
+    ...task,
+    startUrl: normalizeUrl(task.startUrl),
+    actions: task.actions.map((action) =>
+      action.type === "goto"
+        ? {
+            ...action,
+            url: normalizeUrl(action.url),
+          }
+        : action,
+    ),
+  }));
+}
+
+function normalizeUrl(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return "/";
+  }
+
+  if (trimmed.startsWith("/")) {
+    return trimmed.replace(/\s+/g, "");
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    const nextPath = `${parsed.pathname || "/"}${parsed.search}${parsed.hash}`.trim();
+    return nextPath || "/";
+  } catch {
+    return trimmed;
+  }
 }
