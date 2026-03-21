@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "postinstall": "PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -19,6 +20,7 @@
     "ai": "^6.0.134",
     "chat": "^4.20.2",
     "next": "^15.3.0",
+    "playwright": "^1.52.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "zod": "^3.24.4"
@@ -30,7 +32,6 @@
     "@types/react-dom": "^19.1.2",
     "eslint": "^9.25.1",
     "eslint-config-next": "^15.3.0",
-    "playwright": "^1.52.0",
     "typescript": "^5.8.3"
   }
 }
