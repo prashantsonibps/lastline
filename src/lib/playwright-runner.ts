@@ -6,7 +6,7 @@ import type { QaAction, QaTask, ReviewArtifact } from "@/lib/types";
 async function runAction(page: Page, action: QaAction, taskOutputDir: string) {
   switch (action.type) {
     case "goto":
-      await page.goto(action.url, { waitUntil: "networkidle" });
+      await page.goto(action.url.trim(), { waitUntil: "domcontentloaded", timeout: 45_000 });
       return;
     case "click":
       await page.locator(action.selector).first().click();
@@ -54,6 +54,8 @@ export async function runQaTask(input: {
   });
   const page = await context.newPage();
   const video = page.video();
+  page.setDefaultTimeout(20_000);
+  page.setDefaultNavigationTimeout(45_000);
 
   for (const action of input.task.actions) {
     await runAction(page, action, taskOutputDir);

@@ -5,6 +5,7 @@ import { ensureDir, listDirectories, pathExists, readJson, writeJson } from "@/l
 import type { ChangedFile, RepoRef, ReviewJob, ReviewRuntimeConfig } from "@/lib/types";
 
 const JOB_FILE_NAME = "job.json";
+const jobUpdateQueues = new Map<string, Promise<ReviewJob>>();
 
 function getJobDir(jobId: string) {
   return path.join(config.jobsRootDir, jobId);
@@ -70,17 +71,33 @@ export async function getReviewJob(jobId: string) {
 }
 
 export async function updateReviewJob(jobId: string, updater: (job: ReviewJob) => ReviewJob | Promise<ReviewJob>) {
-  const existingJob = await getReviewJob(jobId);
+  const previous = jobUpdateQueues.get(jobId) ?? Promise.resolve(undefined as never);
 
-  if (!existingJob) {
-    throw new Error(`Review job ${jobId} not found.`);
+  const next = previous
+    .catch(() => undefined as never)
+    .then(async () => {
+      const existingJob = await getReviewJob(jobId);
+
+      if (!existingJob) {
+        throw new Error(`Review job ${jobId} not found.`);
+      }
+
+      const nextJob = await updater(existingJob);
+      nextJob.updatedAt = new Date().toISOString();
+      await persistReviewJob(nextJob);
+
+      return nextJob;
+    });
+
+  jobUpdateQueues.set(jobId, next);
+
+  try {
+    return await next;
+  } finally {
+    if (jobUpdateQueues.get(jobId) === next) {
+      jobUpdateQueues.delete(jobId);
+    }
   }
-
-  const nextJob = await updater(existingJob);
-  nextJob.updatedAt = new Date().toISOString();
-  await persistReviewJob(nextJob);
-
-  return nextJob;
 }
 
 export async function appendJobLog(jobId: string, message: string) {
