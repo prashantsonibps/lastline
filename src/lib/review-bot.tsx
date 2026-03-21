@@ -216,7 +216,12 @@ export async function deliverReviewToTelegram(input: {
   };
 }
 
-async function handleUnboundThread(threadId: string, text: string) {
+async function handleUnboundThread(thread: Thread<unknown, unknown>, text: string) {
+  if (await maybeStartTicTacToe(thread, text)) {
+    return;
+  }
+
+  const threadId = thread.id;
   const boundJobId = await ensureBoundJobFromMessage(threadId, text);
 
   if (boundJobId) {
@@ -338,7 +343,7 @@ async function handleIdleMessage(thread: Thread, text: string) {
   const state = await getReviewChatThreadState(thread.id);
 
   if (!state?.activeJobId) {
-    await handleUnboundThread(thread.id, text);
+    await handleUnboundThread(thread, text);
     return;
   }
 
@@ -384,19 +389,19 @@ function registerHandlers(reviewBot: Chat) {
   }
 
   reviewBot.onDirectMessage(async (thread, message) => {
-    await thread.subscribe();
     if (await maybeStartTicTacToe(thread, message.text)) {
       return;
     }
-    await handleUnboundThread(thread.id, message.text);
+    await thread.subscribe();
+    await handleUnboundThread(thread, message.text);
   });
 
   reviewBot.onNewMention(async (thread, message) => {
-    await thread.subscribe();
     if (await maybeStartTicTacToe(thread, message.text)) {
       return;
     }
-    await handleUnboundThread(thread.id, message.text);
+    await thread.subscribe();
+    await handleUnboundThread(thread, message.text);
   });
 
   reviewBot.onAction(
@@ -463,7 +468,7 @@ function registerHandlers(reviewBot: Chat) {
     };
 
     if (!state.activeJobId) {
-      await handleUnboundThread(thread.id, message.text);
+      await handleUnboundThread(thread, message.text);
       return;
     }
 

@@ -40,7 +40,12 @@ export function isTicTacToeStartMessage(text: string) {
     return false;
   }
 
-  return normalized === "/tictactoe" || /\bbored\b/.test(normalized);
+  return (
+    normalized === "/tictactoe" ||
+    normalized.startsWith("/tictactoe@") ||
+    normalized === "tictactoe" ||
+    /\bbored\b/.test(normalized)
+  );
 }
 
 export function getAvailableMoves(board: TicTacToeCell[]) {
