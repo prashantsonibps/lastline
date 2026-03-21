@@ -1,10 +1,13 @@
 import path from "node:path";
 
 const rootDir = process.cwd();
+const defaultJobsRootDir = process.env.VERCEL
+  ? path.join("/tmp", "lastline-review-jobs")
+  : path.join(rootDir, ".review-jobs");
 
 export const config = {
   rootDir,
-  jobsRootDir: path.join(rootDir, ".review-jobs"),
+  jobsRootDir: process.env.JOBS_ROOT_DIR ?? defaultJobsRootDir,
   appPort: Number(process.env.APP_PORT ?? "3000"),
   reviewAppBaseUrl: process.env.REVIEW_APP_BASE_URL ?? "http://127.0.0.1:3100",
   ffmpegPath: process.env.FFMPEG_PATH ?? "ffmpeg",

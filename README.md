@@ -28,10 +28,13 @@ GEMINI_QA_MODEL=gemini-2.5-pro
 GITHUB_TOKEN=
 GITHUB_WEBHOOK_SECRET=
 BLOB_READ_WRITE_TOKEN=
+JOBS_ROOT_DIR=
 APP_PORT=3000
 REVIEW_APP_BASE_URL=http://127.0.0.1:3100
 FFMPEG_PATH=ffmpeg
 ```
+
+On Vercel, runtime job files should live in `/tmp`. The app now defaults to `/tmp/lastline-review-jobs` automatically when deployed. `JOBS_ROOT_DIR` is optional and mainly useful if you want to override that path locally.
 
 ## Vercel Blob
 
