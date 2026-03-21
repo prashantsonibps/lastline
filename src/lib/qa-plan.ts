@@ -1,6 +1,6 @@
-import { generateObject } from "ai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { generateText, Output } from "ai";
 import { z } from "zod";
+import { getLanguageModel, hasLanguageModelAccess } from "@/lib/ai-model";
 import { config } from "@/lib/config";
 import type { ChangedFile, PullRequestRef, QaTask, RepoRef } from "@/lib/types";
 
@@ -61,17 +61,15 @@ export async function generateQaPlan(input: {
     return curatedPlan;
   }
 
-  if (!config.googleApiKey) {
+  if (!hasLanguageModelAccess()) {
     return createFallbackPlan(input.changedFiles);
   }
 
-  const google = createGoogleGenerativeAI({
-    apiKey: config.googleApiKey,
-  });
-
-  const { object } = await generateObject({
-    model: google(config.qaModel),
-    schema: qaTaskSchema,
+  const { output } = await generateText({
+    model: getLanguageModel(config.qaModel),
+    output: Output.object({
+      schema: qaTaskSchema,
+    }),
     temperature: 0.2,
     system: [
       "You create QA tasks for frontend pull requests.",
@@ -95,7 +93,7 @@ export async function generateQaPlan(input: {
     ].join("\n"),
   });
 
-  return normalizeQaTasks(object.tasks) satisfies QaTask[];
+  return normalizeQaTasks(output.tasks) satisfies QaTask[];
 }
 
 function createCuratedPlan(repo: RepoRef): QaTask[] | null {

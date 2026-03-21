@@ -1,7 +1,7 @@
 import path from "node:path";
-import { generateObject } from "ai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { generateText, Output } from "ai";
 import { z } from "zod";
+import { getLanguageModel, hasLanguageModelAccess } from "@/lib/ai-model";
 import { config } from "../config.ts";
 import { ensureDir } from "../fs-utils.ts";
 import { runCommand } from "../shell.ts";
@@ -145,7 +145,7 @@ const issueDraftSchema = z.object({
 export function createIssueDraftingAdapter(): IssueDraftingAdapter {
   return {
     async draftIssue(input) {
-      if (!config.googleApiKey) {
+      if (!hasLanguageModelAccess()) {
         return {
           title: `Bug at ${input.finding.timestampInput}: ${input.finding.description.slice(0, 60)}`,
           observedBehavior: input.finding.description,
@@ -153,10 +153,11 @@ export function createIssueDraftingAdapter(): IssueDraftingAdapter {
         };
       }
 
-      const google = createGoogleGenerativeAI({ apiKey: config.googleApiKey });
-      const { object } = await generateObject({
-        model: google(config.feedbackModel),
-        schema: issueDraftSchema,
+      const { output } = await generateText({
+        model: getLanguageModel(config.feedbackModel),
+        output: Output.object({
+          schema: issueDraftSchema,
+        }),
         temperature: 0.2,
         system:
           "You convert raw UI bug notes into precise GitHub issue fields. Preserve the user meaning and keep the output concise.",
@@ -168,7 +169,7 @@ export function createIssueDraftingAdapter(): IssueDraftingAdapter {
         ].join("\n"),
       });
 
-      return object;
+      return output;
     },
   };
 }

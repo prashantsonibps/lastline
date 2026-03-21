@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createFeedbackAgent } from "@/lib/feedback-agent";
-import { createDefaultFeedbackAgentDependencies, resolveTelegramChatId } from "@/lib/feedback-agent/adapters";
 import { getReviewJob, updateReviewJob } from "@/lib/review-jobs-store";
+import { deliverReviewToTelegram } from "@/lib/review-bot";
 
 type RouteContext = {
   params: Promise<{
@@ -24,23 +23,33 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 
   const body = startFeedbackSchema.parse(await request.json().catch(() => ({})));
-  const chatId = body.chatId ?? resolveTelegramChatId(job);
+  const chatId = body.chatId ?? job.feedback?.telegram?.chatId;
 
   if (!chatId) {
     return NextResponse.json({ error: "Telegram chat id is required." }, { status: 400 });
   }
 
-  const agent = createFeedbackAgent(createDefaultFeedbackAgentDependencies());
-  const updatedJob = await agent.startFeedbackForRun({
-    run: job,
+  const result = await deliverReviewToTelegram({
+    jobId,
     chatId,
     threadId: body.threadId,
   });
-
-  await updateReviewJob(jobId, () => updatedJob);
+  await updateReviewJob(jobId, (current) => ({
+    ...current,
+    feedback: {
+      ...current.feedback!,
+      telegram: {
+        ...current.feedback?.telegram,
+        chatId,
+        threadId: body.threadId,
+        deliveryMessageId: result.deliveryMessageId,
+      },
+    },
+  }));
 
   return NextResponse.json({
     ok: true,
-    status: updatedJob.status,
+    status: result.job.status,
+    threadId: result.threadId,
   });
 }
