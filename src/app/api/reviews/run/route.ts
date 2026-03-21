@@ -52,12 +52,17 @@ const manualRunSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const body = manualRunSchema.parse(await request.json());
-  const job = await createManualReviewJob(body);
-  void executeReviewJob(job.id);
+  try {
+    const body = manualRunSchema.parse(await request.json());
+    const job = await createManualReviewJob(body);
+    void executeReviewJob(job.id);
 
-  return NextResponse.json({
-    accepted: true,
-    jobId: job.id,
-  });
+    return NextResponse.json({
+      accepted: true,
+      jobId: job.id,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid review run payload.";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }

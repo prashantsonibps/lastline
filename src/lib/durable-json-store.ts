@@ -16,6 +16,40 @@ function normalizeStorePath(storePath: string) {
   return storePath.replace(/^\/+/, "");
 }
 
+async function listLocalJsonPaths(prefix: string) {
+  const { readdir } = await import("node:fs/promises");
+  const rootDirectory = getLocalFilePath(prefix);
+
+  await ensureDir(rootDirectory);
+
+  const walk = async (directory: string): Promise<string[]> => {
+    try {
+      const entries = await readdir(directory, { withFileTypes: true });
+      const nested = await Promise.all(
+        entries.map(async (entry) => {
+          const fullPath = path.join(directory, entry.name);
+
+          if (entry.isDirectory()) {
+            return walk(fullPath);
+          }
+
+          if (!entry.isFile()) {
+            return [];
+          }
+
+          return [path.relative(config.jobsRootDir, fullPath).split(path.sep).join(path.posix.sep)];
+        }),
+      );
+
+      return nested.flat();
+    } catch {
+      return [];
+    }
+  };
+
+  return walk(rootDirectory);
+}
+
 async function findBlobByPath(storePath: string): Promise<BlobListEntry | null> {
   const pathname = normalizeStorePath(storePath);
   const result = await list({
@@ -89,16 +123,5 @@ export async function listDurableJsonPaths(prefix: string) {
     return result.blobs.map((entry) => entry.pathname);
   }
 
-  const localDirectory = getLocalFilePath(normalizedPrefix);
-  await ensureDir(localDirectory);
-
-  const { readdir } = await import("node:fs/promises");
-  try {
-    const entries = await readdir(localDirectory, { withFileTypes: true });
-    return entries
-      .filter((entry) => entry.isFile())
-      .map((entry) => path.posix.join(normalizedPrefix, entry.name));
-  } catch {
-    return [];
-  }
+  return listLocalJsonPaths(normalizedPrefix);
 }

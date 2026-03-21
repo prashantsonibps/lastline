@@ -35,10 +35,9 @@ const feedbackActionSchema = z.discriminatedUnion("action", [
 ]);
 
 export async function POST(request: NextRequest, context: RouteContext) {
-  const { jobId } = await context.params;
-  const body = feedbackActionSchema.parse(await request.json());
-
   try {
+    const { jobId } = await context.params;
+    const body = feedbackActionSchema.parse(await request.json());
     const job = await updateReviewJob(jobId, (current) => {
       const feedback = current.feedback ?? createEmptyFeedbackState();
 
@@ -49,9 +48,21 @@ export async function POST(request: NextRequest, context: RouteContext) {
             status: current.status === "video_ready" ? "awaiting_feedback" : current.status,
             feedback: {
               ...feedback,
-              telegramChatId: body.telegramChatId,
-              telegramMessageId: body.telegramMessageId,
-              videoDeliveredAt: feedback.videoDeliveredAt ?? new Date().toISOString(),
+              delivery: feedback.delivery ?? {
+                deliveredAt: new Date().toISOString(),
+                summary: "",
+                videoUrl:
+                  current.artifacts?.finalVideoUrl ??
+                  current.handoff?.stitchedVideo?.location ??
+                  "",
+              },
+              telegram: {
+                ...feedback.telegram,
+                chatId: body.telegramChatId,
+                deliveryMessageId: body.telegramMessageId ?? feedback.telegram?.deliveryMessageId ?? "manual-feedback-start",
+                threadId: feedback.telegram?.threadId,
+                lastPromptMessageId: feedback.telegram?.lastPromptMessageId,
+              },
             },
           };
         case "save_finding":
@@ -75,6 +86,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
             },
           };
         case "mark_issue_created":
+          const createdIssue = feedback.findings.find((finding) => finding.id === body.findingId)?.issue;
+
           return {
             ...current,
             feedback: {
@@ -87,6 +100,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
                     }
                   : finding,
               ),
+              createdIssues:
+                createdIssue && !feedback.createdIssues.some((issue) => issue.findingId === body.findingId)
+                  ? [...feedback.createdIssues, createdIssue]
+                  : feedback.createdIssues,
             },
           };
         case "set_status":

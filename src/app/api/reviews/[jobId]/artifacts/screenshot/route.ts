@@ -22,77 +22,82 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: NextRequest, context: RouteContext) {
-  const { jobId } = await context.params;
-  const body = requestSchema.parse(await request.json());
-  const job = await getReviewJob(jobId);
+  try {
+    const { jobId } = await context.params;
+    const body = requestSchema.parse(await request.json());
+    const job = await getReviewJob(jobId);
 
-  if (!job) {
-    return NextResponse.json({ error: "Review job not found." }, { status: 404 });
+    if (!job) {
+      return NextResponse.json({ error: "Review job not found." }, { status: 404 });
+    }
+
+    const finalVideo = job.artifacts?.finalVideo ?? job.handoff?.stitchedVideo;
+
+    if (!finalVideo) {
+      return NextResponse.json({ error: "No stitched video artifact found for this review job." }, { status: 400 });
+    }
+
+    const timestampSeconds =
+      body.timestampSeconds ?? (body.timestampText ? parseTimestampToSeconds(body.timestampText) : null);
+
+    if (timestampSeconds === null) {
+      return NextResponse.json({ error: "A timestamp is required." }, { status: 400 });
+    }
+
+    const screenshotName = `${body.findingId ?? "screenshot"}-${timestampSeconds}s`;
+    const screenshotPath = path.join(job.outputDir, "screenshots", `${screenshotName}.png`);
+    const videoSource = await resolveVideoSource(finalVideo, job.outputDir);
+
+    if (!videoSource) {
+      return NextResponse.json({ error: "The stitched video is not available for screenshot extraction." }, { status: 400 });
+    }
+
+    await extractVideoScreenshot({
+      videoPathOrUrl: videoSource,
+      outputPath: screenshotPath,
+      timestampSeconds,
+    });
+
+    const screenshotArtifact =
+      (await uploadScreenshotArtifact({
+        filePath: screenshotPath,
+        repoOwner: job.repo.owner,
+        repoName: job.repo.name,
+        prNumber: job.pr.number,
+        jobId: job.id,
+        screenshotName,
+      })) ??
+      ({
+        kind: "local_path",
+        location: screenshotPath,
+        isDurable: false,
+      } satisfies VideoArtifact);
+
+    if (body.findingId) {
+      await updateReviewJob(jobId, (current) => ({
+        ...current,
+        feedback: {
+          ...(current.feedback ?? createEmptyFeedbackState()),
+          findings: (current.feedback ?? createEmptyFeedbackState()).findings.map((finding) =>
+            finding.id === body.findingId
+              ? {
+                  ...finding,
+                  screenshotArtifact,
+                }
+              : finding,
+          ),
+        },
+      }));
+    }
+
+    return NextResponse.json({
+      timestampSeconds,
+      screenshot: screenshotArtifact,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to extract screenshot.";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
-
-  const finalVideo = job.artifacts?.finalVideo ?? job.handoff?.stitchedVideo;
-
-  if (!finalVideo) {
-    return NextResponse.json({ error: "No stitched video artifact found for this review job." }, { status: 400 });
-  }
-
-  const timestampSeconds =
-    body.timestampSeconds ?? (body.timestampText ? parseTimestampToSeconds(body.timestampText) : null);
-
-  if (timestampSeconds === null) {
-    return NextResponse.json({ error: "A timestamp is required." }, { status: 400 });
-  }
-
-  const screenshotName = `${body.findingId ?? "screenshot"}-${timestampSeconds}s`;
-  const screenshotPath = path.join(job.outputDir, "screenshots", `${screenshotName}.png`);
-  const videoSource = await resolveVideoSource(finalVideo, job.outputDir);
-
-  if (!videoSource) {
-    return NextResponse.json({ error: "The stitched video is not available for screenshot extraction." }, { status: 400 });
-  }
-
-  await extractVideoScreenshot({
-    videoPathOrUrl: videoSource,
-    outputPath: screenshotPath,
-    timestampSeconds,
-  });
-
-  const screenshotArtifact =
-    (await uploadScreenshotArtifact({
-      filePath: screenshotPath,
-      repoOwner: job.repo.owner,
-      repoName: job.repo.name,
-      prNumber: job.pr.number,
-      jobId: job.id,
-      screenshotName,
-    })) ??
-    ({
-      kind: "local_path",
-      location: screenshotPath,
-      isDurable: false,
-    } satisfies VideoArtifact);
-
-  if (body.findingId) {
-    await updateReviewJob(jobId, (current) => ({
-      ...current,
-      feedback: {
-        ...(current.feedback ?? createEmptyFeedbackState()),
-        findings: (current.feedback ?? createEmptyFeedbackState()).findings.map((finding) =>
-          finding.id === body.findingId
-            ? {
-                ...finding,
-                screenshotArtifact,
-              }
-            : finding,
-        ),
-      },
-    }));
-  }
-
-  return NextResponse.json({
-    timestampSeconds,
-    screenshot: screenshotArtifact,
-  });
 }
 
 async function resolveVideoSource(videoArtifact: VideoArtifact, outputDir: string) {

@@ -43,8 +43,14 @@ export function verifyWebhookSignature(rawBody: string, signature: string | null
   }
 
   const expected = `sha256=${createHmac("sha256", config.githubWebhookSecret).update(rawBody).digest("hex")}`;
+  const provided = Buffer.from(signature);
+  const computed = Buffer.from(expected);
 
-  return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  if (provided.length !== computed.length) {
+    return false;
+  }
+
+  return timingSafeEqual(provided, computed);
 }
 
 export function parseWebhookEvent(eventName: string | null, rawBody: string) {
