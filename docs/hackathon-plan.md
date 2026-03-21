@@ -3,7 +3,7 @@
 ## Person 1
 
 - Own GitHub PR intake, review-job orchestration, sandbox execution, QA-plan generation, Playwright recording, and video composition.
-- Keep the contract to Person 2 simple: one completed review job should produce a final video path, task list, raw logs, and task-video metadata.
+- Keep the contract to Person 2 simple: one `video_ready` run should produce repository identity, PR metadata, ordered task summaries, a stitched video artifact reference, and useful logs.
 - Treat Vercel as the control plane and sandbox launcher, not the browser runtime itself. The control app should trigger isolated review jobs that can clone repos, install deps, boot apps, and run Playwright.
 
 ## Person 2
@@ -27,6 +27,20 @@
 - `GET /api/reviews/:jobId`
   Returns status, logs, tasks, and artifact paths for downstream consumers.
 
+## Shared Run Lifecycle
+
+- Target statuses:
+  - `queued`
+  - `planning`
+  - `testing`
+  - `video_ready`
+  - `awaiting_feedback`
+  - `creating_issues`
+  - `done`
+  - `failed`
+- The current codebase still uses a coarser MVP status model, so the next implementation step is to migrate review jobs toward the richer lifecycle above.
+- The full contract and reconciliation notes live in [docs/integration-contract.md](/Users/prashantsoni/Desktop/Vercel*Deepmind_hackathon/docs/integration-contract.md).
+
 ## Vercel Deployment Notes
 
 - Deploy this Next.js app on Vercel as the orchestration surface.
@@ -43,8 +57,7 @@
 ## Near-Term Build Order
 
 - Prove one full manual run against `SpaceGuard`.
-- Add a stable artifact handoff shape for Person 2.
+- Add a stable `video_ready` artifact handoff shape for Person 2.
 - Replace local file-backed job execution with the Vercel-friendly execution path you choose for the hackathon demo.
 - Add screenshot extraction from video timestamps.
 - Add issue creation and Telegram delivery.
-

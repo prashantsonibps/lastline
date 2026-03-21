@@ -1,12 +1,31 @@
 import { config } from "@/lib/config";
 import { startDevServer } from "@/lib/dev-server";
+import { uploadFinalVideoArtifact } from "@/lib/blob";
 import { hasPotentialVisualChanges } from "@/lib/github";
 import { runQaTask } from "@/lib/playwright-runner";
 import { generateQaPlan } from "@/lib/qa-plan";
 import { appendJobLog, getReviewJob, updateReviewJob } from "@/lib/review-jobs-store";
 import { createIntroCard, stitchReviewVideo } from "@/lib/video";
 import { prepareWorkspace } from "@/lib/workspace";
-import type { ReviewArtifact } from "@/lib/types";
+import type { QaTask, ReviewArtifact, VideoArtifact } from "@/lib/types";
+
+function buildTaskSummaries(tasks: QaTask[]) {
+  return tasks.map((task) => ({
+    id: task.id,
+    title: task.title,
+    goal: task.goal,
+    steps: task.steps,
+    expected: task.expected,
+  }));
+}
+
+function createLocalVideoArtifact(location: string): VideoArtifact {
+  return {
+    kind: "local_path",
+    location,
+    isDurable: false,
+  };
+}
 
 export async function executeReviewJob(jobId: string) {
   const existingJob = await getReviewJob(jobId);
@@ -25,11 +44,11 @@ export async function executeReviewJob(jobId: string) {
     return;
   }
 
-    await updateReviewJob(jobId, (job) => ({
-      ...job,
-      status: "planning",
-      error: undefined,
-    }));
+  await updateReviewJob(jobId, (job) => ({
+    ...job,
+    status: "planning",
+    error: undefined,
+  }));
 
   const log = async (message: string) => {
     if (message.length > 0) {
@@ -42,6 +61,7 @@ export async function executeReviewJob(jobId: string) {
   try {
     const job = (await getReviewJob(jobId))!;
     const workspace = await prepareWorkspace(job, log);
+    const reviewBaseUrl = job.runtime.reviewBaseUrl ?? config.reviewAppBaseUrl;
 
     const qaTasks = await generateQaPlan({
       repo: job.repo,
@@ -55,12 +75,16 @@ export async function executeReviewJob(jobId: string) {
       tasks: qaTasks,
     }));
 
-    serverHandle = await startDevServer({
-      appDir: workspace.appDir,
-      baseUrl: config.reviewAppBaseUrl,
-      runtime: job.runtime,
-      onLog: log,
-    });
+    if (job.runtime.skipAppStart) {
+      await log(`Skipping local app start and using review base URL ${reviewBaseUrl}`);
+    } else {
+      serverHandle = await startDevServer({
+        appDir: workspace.appDir,
+        baseUrl: reviewBaseUrl,
+        runtime: job.runtime,
+        onLog: log,
+      });
+    }
 
     const artifacts: ReviewArtifact[] = [];
 
@@ -68,7 +92,7 @@ export async function executeReviewJob(jobId: string) {
       await log(`Running QA task ${task.id}: ${task.title}`);
       const artifact = await runQaTask({
         task,
-        baseUrl: config.reviewAppBaseUrl,
+        baseUrl: reviewBaseUrl,
         outputDir: job.outputDir,
       });
       await createIntroCard({
@@ -84,6 +108,23 @@ export async function executeReviewJob(jobId: string) {
       outputDir: job.outputDir,
       onLog: log,
     });
+    const uploadedFinalVideo =
+      (await uploadFinalVideoArtifact({
+        filePath: finalVideoPath,
+        repoOwner: job.repo.owner,
+        repoName: job.repo.name,
+        prNumber: job.pr.number,
+        jobId: job.id,
+      })) ?? createLocalVideoArtifact(finalVideoPath);
+
+    if (uploadedFinalVideo.kind === "remote_url") {
+      await log(`Uploaded stitched video to ${uploadedFinalVideo.location}`);
+    } else {
+      await log("Blob upload not configured; keeping stitched video as a local artifact path");
+    }
+
+    const derivedPrUrl = job.pr.url ?? `https://github.com/${job.repo.owner}/${job.repo.name}/pull/${job.pr.number}`;
+    const finalVideoUrl = uploadedFinalVideo.location;
 
     await updateReviewJob(jobId, (current) => ({
       ...current,
@@ -91,17 +132,32 @@ export async function executeReviewJob(jobId: string) {
       artifacts: {
         taskArtifacts: artifacts,
         finalVideoPath,
-        finalVideoUrl: finalVideoPath,
+        finalVideoUrl,
+        finalVideo: uploadedFinalVideo,
       },
       pr: {
         ...current.pr,
-        url: current.pr.url ?? `https://github.com/${current.repo.owner}/${current.repo.name}/pull/${current.pr.number}`,
+        url: current.pr.url ?? derivedPrUrl,
       },
       feedback: current.feedback ?? {
         conversation: { step: "idle" },
         findings: [],
         screenshotsByTimestamp: {},
         createdIssues: [],
+      },
+      handoff: {
+        repo: {
+          owner: current.repo.owner,
+          name: current.repo.name,
+        },
+        pr: {
+          number: current.pr.number,
+          title: current.pr.title,
+          url: current.pr.url ?? derivedPrUrl,
+        },
+        commitSha: current.pr.headSha,
+        qaTaskSummaries: buildTaskSummaries(current.tasks),
+        stitchedVideo: uploadedFinalVideo,
       },
     }));
   } catch (error) {

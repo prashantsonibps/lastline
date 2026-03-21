@@ -39,7 +39,7 @@ export default async function HomePage() {
             maxWidth: 820,
           }}
         >
-          Turn pull requests into review videos.
+          Turn pull requests into review-ready evidence.
         </h1>
         <p
           style={{
@@ -51,8 +51,9 @@ export default async function HomePage() {
           }}
         >
           Webhook intake, PR checkout, QA plan generation, Playwright execution,
-          and stitched review artifacts live here. Trigger via the GitHub webhook
-          endpoint or the manual run endpoint while you wire the rest.
+          and stitched review artifacts live here. The machine side now targets a
+          `video_ready` handoff so Telegram and issue creation can attach to the
+          same run record.
         </p>
       </section>
 
@@ -121,6 +122,11 @@ export default async function HomePage() {
                 <span style={{ color: "#a1b0d2" }}>
                   {job.tasks.length} task(s) • {new Date(job.updatedAt).toLocaleString()}
                 </span>
+                {job.handoff?.stitchedVideo ? (
+                  <span style={{ color: "#7cf4c3" }}>
+                    video_ready artifact: {job.handoff.stitchedVideo.kind}
+                  </span>
+                ) : null}
               </article>
             ))
           )}
@@ -129,4 +135,3 @@ export default async function HomePage() {
     </main>
   );
 }
-

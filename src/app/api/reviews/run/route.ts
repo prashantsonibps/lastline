@@ -13,10 +13,10 @@ const manualRunSchema = z.object({
     number: z.number().int().positive(),
     title: z.string().min(1),
     body: z.string().default(""),
+    url: z.string().url().optional(),
     headRef: z.string().min(1),
     baseRef: z.string().min(1),
     headSha: z.string().min(1),
-    url: z.string().url().optional(),
   }),
   changedFiles: z
     .array(
@@ -44,6 +44,9 @@ const manualRunSchema = z.object({
         .optional(),
       env: z.record(z.string(), z.string()).optional(),
       startTimeoutMs: z.number().int().positive().max(300000).optional(),
+      reviewBaseUrl: z.string().url().optional(),
+      skipInstall: z.boolean().optional(),
+      skipAppStart: z.boolean().optional(),
     })
     .default({}),
 });

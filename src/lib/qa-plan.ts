@@ -56,6 +56,11 @@ export async function generateQaPlan(input: {
   pr: PullRequestRef;
   changedFiles: ChangedFile[];
 }) {
+  const curatedPlan = createCuratedPlan(input.repo);
+  if (curatedPlan) {
+    return curatedPlan;
+  }
+
   if (!config.googleApiKey) {
     return createFallbackPlan(input.changedFiles);
   }
@@ -90,7 +95,84 @@ export async function generateQaPlan(input: {
     ].join("\n"),
   });
 
-  return object.tasks satisfies QaTask[];
+  return normalizeQaTasks(object.tasks) satisfies QaTask[];
+}
+
+function createCuratedPlan(repo: RepoRef): QaTask[] | null {
+  const normalizedRepoName = repo.name.toLowerCase();
+
+  if (normalizedRepoName !== "spaceguard") {
+    return null;
+  }
+
+  return [
+    {
+      id: "spaceguard-globe-smoke",
+      title: "Globe Landing Smoke Test",
+      goal: "Verify the live landing experience renders the top navigation and live telemetry banner correctly.",
+      startUrl: "/",
+      steps: [
+        "Open the Globe landing page.",
+        "Verify the top navigation shows SPACEGUARD, GLOBE, MARKETS, and PORTFOLIO.",
+        "Verify the LIVE badge is visible.",
+        "Capture a screenshot of the landing experience.",
+      ],
+      expected: [
+        "The landing page loads successfully.",
+        "The top navigation and LIVE telemetry indicator are visible.",
+      ],
+      actions: [
+        { type: "goto", url: "/" },
+        { type: "waitForText", text: "SPACEGUARD" },
+        { type: "waitForText", text: "GLOBE" },
+        { type: "waitForText", text: "MARKETS" },
+        { type: "waitForText", text: "PORTFOLIO" },
+        { type: "waitForText", text: "LIVE" },
+        { type: "screenshot", name: "globe-landing" },
+      ],
+    },
+    {
+      id: "spaceguard-markets-smoke",
+      title: "Prediction Markets Smoke Test",
+      goal: "Verify the Markets page opens and at least one prediction market card is rendered.",
+      startUrl: "/prediction",
+      steps: [
+        "Open the Markets page.",
+        "Verify the MARKETS tab is active and at least one market question is visible.",
+        "Capture a screenshot of the rendered market list.",
+      ],
+      expected: [
+        "The Markets page loads successfully.",
+        "A prediction market question is visible on the page.",
+      ],
+      actions: [
+        { type: "goto", url: "/prediction" },
+        { type: "waitForText", text: "MARKETS" },
+        { type: "waitForText", text: "Will ISS" },
+        { type: "screenshot", name: "markets-view" },
+      ],
+    },
+    {
+      id: "spaceguard-portfolio-smoke",
+      title: "Portfolio Smoke Test",
+      goal: "Verify the Portfolio page opens and shows its primary heading.",
+      startUrl: "/portfolio",
+      steps: [
+        "Open the Portfolio page.",
+        "Verify the PORTFOLIO heading is visible.",
+        "Capture a screenshot of the portfolio view.",
+      ],
+      expected: [
+        "The Portfolio page loads successfully.",
+        "The primary PORTFOLIO heading is visible.",
+      ],
+      actions: [
+        { type: "goto", url: "/portfolio" },
+        { type: "waitForText", text: "PORTFOLIO" },
+        { type: "screenshot", name: "portfolio-view" },
+      ],
+    },
+  ];
 }
 
 function createFallbackPlan(changedFiles: ChangedFile[]): QaTask[] {
@@ -111,17 +193,54 @@ function createFallbackPlan(changedFiles: ChangedFile[]): QaTask[] {
       steps: [
         `Open ${startUrl}.`,
         "Wait for the page to settle.",
+        "Wait for at least one heading or prominent text block to appear.",
         "Capture a screenshot of the rendered UI.",
       ],
       expected: [
         "The page loads successfully.",
-        "Primary headings, actions, and layout are visible.",
+        "Prominent content and primary layout are visible.",
       ],
       actions: [
         { type: "goto", url: startUrl },
         { type: "sleep", ms: 1500 },
+        { type: "waitForSelector", selector: "h1, h2, main, nav" },
         { type: "screenshot", name: "landing-state" },
       ],
     },
   ];
+}
+
+function normalizeQaTasks(tasks: QaTask[]) {
+  return tasks.map((task) => ({
+    ...task,
+    startUrl: normalizeUrl(task.startUrl),
+    actions: task.actions.map((action) =>
+      action.type === "goto"
+        ? {
+            ...action,
+            url: normalizeUrl(action.url),
+          }
+        : action,
+    ),
+  }));
+}
+
+function normalizeUrl(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return "/";
+  }
+
+  if (trimmed.startsWith("/")) {
+    return trimmed.replace(/\s+/g, "");
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    const nextPath = `${parsed.pathname || "/"}${parsed.search}${parsed.hash}`.trim();
+    return nextPath || "/";
+  } catch {
+    return trimmed;
+  }
 }

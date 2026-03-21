@@ -8,6 +8,7 @@ const pullRequestEventSchema = z.object({
   repository: z.object({
     name: z.string(),
     clone_url: z.string().url(),
+    html_url: z.string().url().optional(),
     default_branch: z.string(),
     owner: z.object({
       login: z.string(),
@@ -17,6 +18,7 @@ const pullRequestEventSchema = z.object({
     number: z.number().int().positive(),
     title: z.string(),
     body: z.string().nullable(),
+    html_url: z.string().url().optional(),
     head: z.object({
       ref: z.string(),
       sha: z.string(),
@@ -103,6 +105,7 @@ export async function createJobFromPullRequestEvent(event: PullRequestEvent) {
       number: event.pull_request.number,
       title: event.pull_request.title,
       body: event.pull_request.body ?? "",
+      url: event.pull_request.html_url,
       headRef: event.pull_request.head.ref,
       baseRef: event.pull_request.base.ref,
       headSha: event.pull_request.head.sha,

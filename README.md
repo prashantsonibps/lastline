@@ -11,6 +11,7 @@ PR review video agent scaffold for the hackathon MVP.
 - QA plan generation via AI SDK with a deterministic JSON schema
 - Playwright task runner with per-task video recording
 - FFmpeg intro-card generation and final video stitching
+- `video_ready` handoff payload for the feedback agent
 - Minimal dashboard at `/`
 
 ## Environment
@@ -27,6 +28,7 @@ GEMINI_QA_MODEL=gemini-2.5-pro
 GEMINI_FEEDBACK_MODEL=gemini-2.5-pro
 GITHUB_TOKEN=
 GITHUB_WEBHOOK_SECRET=
+BLOB_READ_WRITE_TOKEN=
 APP_PORT=3000
 REVIEW_APP_BASE_URL=http://127.0.0.1:3100
 FFMPEG_PATH=ffmpeg
@@ -35,12 +37,21 @@ TELEGRAM_DEFAULT_CHAT_ID=
 TELEGRAM_WEBHOOK_SECRET=
 ```
 
+## Vercel Blob
+
+1. In Vercel, create or connect a Blob store to this project.
+2. Add `BLOB_READ_WRITE_TOKEN` to the project env vars.
+3. Add the same token to local `.env.local` for local uploads.
+4. When configured, the stitched final review video uploads automatically and `handoff.stitchedVideo` becomes a durable public URL.
+
 ## Deployment
 
 - Vercel should host this Next.js control app.
 - GitHub webhook should point to `/api/github/pr-webhook` on the deployed app.
 - Use the same env names locally, in Vercel, and in GitHub Actions to avoid config drift.
 - Person 2’s planning notes and the shared implementation split are in [docs/hackathon-plan.md](/Users/prashantsoni/Desktop/Vercel*Deepmind_hackathon/docs/hackathon-plan.md).
+- The machine-side and feedback-side reconciliation contract is in [docs/integration-contract.md](/Users/prashantsoni/Desktop/Vercel*Deepmind_hackathon/docs/integration-contract.md).
+- Person 2’s API contract and handoff brief are in [docs/person2-integration.md](/Users/prashantsoni/Desktop/Vercel*Deepmind_hackathon/docs/person2-integration.md).
 
 ## Manual run
 
@@ -65,13 +76,21 @@ curl -X POST http://localhost:3000/api/reviews/run \
 curl http://localhost:3000/api/reviews/<job-id>
 ```
 
-4. Start feedback delivery for a `video_ready` job:
+4. Fetch the distilled `video_ready` handoff payload directly:
+
+```bash
+curl http://localhost:3000/api/reviews/<job-id>/handoff
+```
+
+5. Start feedback delivery for a `video_ready` job:
 
 ```bash
 curl -X POST http://localhost:3000/api/reviews/<job-id>/feedback/start \
   -H "Content-Type: application/json" \
   --data '{"chatId":"<telegram-chat-id>"}'
 ```
+
+When the machine-side flow succeeds, the run will move into `video_ready` and expose a `handoff` block containing PR metadata, ordered QA task summaries, and the stitched video artifact reference for Person 2’s feedback agent.
 
 ## Next steps
 

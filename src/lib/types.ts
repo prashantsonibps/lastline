@@ -8,10 +8,10 @@ export type PullRequestRef = {
   number: number;
   title: string;
   body: string;
+  url?: string;
   headRef: string;
   baseRef: string;
   headSha: string;
-  url?: string;
 };
 
 export type RepoRef = {
@@ -32,6 +32,9 @@ export type ReviewRuntimeConfig = {
   startCommand?: CommandSpec;
   env?: Record<string, string>;
   startTimeoutMs?: number;
+  reviewBaseUrl?: string;
+  skipInstall?: boolean;
+  skipAppStart?: boolean;
 };
 
 export type ReviewJobStatus =
@@ -73,10 +76,25 @@ export type ReviewArtifact = {
   videoPath: string;
 };
 
+export type VideoArtifact = {
+  kind: "local_path" | "remote_url";
+  location: string;
+  isDurable: boolean;
+};
+
 export type ReviewArtifacts = {
   taskArtifacts: ReviewArtifact[];
   finalVideoPath?: string;
   finalVideoUrl?: string;
+  finalVideo?: VideoArtifact;
+};
+
+export type QaTaskSummary = {
+  id: string;
+  title: string;
+  goal: string;
+  steps: string[];
+  expected: string[];
 };
 
 export type TelegramActionId = "report_bug" | "add_another" | "create_issues";
@@ -123,6 +141,10 @@ export type FeedbackFinding = {
   description: string;
   screenshot?: ScreenshotArtifact;
   issue?: CreatedIssueRef;
+  timestampText?: string;
+  note?: string;
+  screenshotArtifact?: VideoArtifact;
+  issueUrl?: string;
 };
 
 export type FeedbackState = {
@@ -133,9 +155,26 @@ export type FeedbackState = {
   };
   telegram?: TelegramBinding;
   conversation: FeedbackConversationState;
+  telegramChatId?: string;
+  videoDeliveredAt?: string;
   findings: FeedbackFinding[];
   screenshotsByTimestamp: Record<string, ScreenshotArtifact>;
   createdIssues: CreatedIssueRef[];
+};
+
+export type VideoReadyHandoff = {
+  repo: {
+    owner: string;
+    name: string;
+  };
+  pr: {
+    number: number;
+    title: string;
+    url?: string;
+  };
+  commitSha: string;
+  qaTaskSummaries: QaTaskSummary[];
+  stitchedVideo?: VideoArtifact;
 };
 
 export type ReviewJob = {
@@ -153,5 +192,6 @@ export type ReviewJob = {
   logs: string[];
   error?: string;
   artifacts?: ReviewArtifacts;
+  handoff?: VideoReadyHandoff;
   feedback?: FeedbackState;
 };
