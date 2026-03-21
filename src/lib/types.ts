@@ -105,6 +105,7 @@ export type FeedbackFinding = {
 
 export type FeedbackState = {
   telegramChatId?: string;
+  telegramMessageId?: string;
   videoDeliveredAt?: string;
   findings: FeedbackFinding[];
 };

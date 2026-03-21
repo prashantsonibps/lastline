@@ -83,6 +83,14 @@ You can also fetch the distilled handoff payload directly:
 curl http://localhost:3000/api/reviews/<job-id>/handoff
 ```
 
+Person 2 can write feedback state back onto the same run through:
+
+```bash
+curl -X POST http://localhost:3000/api/reviews/<job-id>/feedback \
+  -H "Content-Type: application/json" \
+  -d '{"action":"save_finding","timestampText":"1:13","note":"Heading color is wrong in light mode."}'
+```
+
 ## Next steps
 
 - Install dependencies

@@ -19,6 +19,8 @@ This is the shortest path for the Telegram and issue-creation track.
   - `GET /api/reviews/:jobId`
 - Person-2-friendly handoff:
   - `GET /api/reviews/:jobId/handoff`
+- Feedback mutations:
+  - `POST /api/reviews/:jobId/feedback`
 
 ## Handoff Response Shape
 
@@ -70,11 +72,55 @@ This is the shortest path for the Telegram and issue-creation track.
 1. Poll `GET /api/reviews/:jobId/handoff`.
 2. Wait for `status === "video_ready"`.
 3. Read `qaTaskSummaries` to build the Telegram summary.
-4. Send the stitched video to Telegram.
-5. Collect timestamped findings.
-6. Normalize timestamps to integer seconds.
-7. Extract screenshots from the stitched video.
-8. Create GitHub issues in the same repo as the PR.
+4. Call `POST /api/reviews/:jobId/feedback` with `action: "start_feedback"` when the video is delivered.
+5. Send the stitched video to Telegram.
+6. Collect timestamped findings.
+7. Save each finding through `POST /api/reviews/:jobId/feedback` with `action: "save_finding"`.
+8. Extract screenshots from the stitched video.
+9. Create GitHub issues in the same repo as the PR.
+10. Call `POST /api/reviews/:jobId/feedback` with `action: "mark_issue_created"` per finding.
+11. Move status through `creating_issues` and `done` with `action: "set_status"`.
+
+## Feedback Mutation Payloads
+
+### Start feedback
+
+```json
+{
+  "action": "start_feedback",
+  "telegramChatId": "123456",
+  "telegramMessageId": "789"
+}
+```
+
+### Save finding
+
+```json
+{
+  "action": "save_finding",
+  "timestampText": "1:13",
+  "note": "In light mode the headings should be black, not white."
+}
+```
+
+### Mark issue created
+
+```json
+{
+  "action": "mark_issue_created",
+  "findingId": "finding-id",
+  "issueUrl": "https://github.com/prashantsonibps/SpaceGuard/issues/123"
+}
+```
+
+### Update run status
+
+```json
+{
+  "action": "set_status",
+  "status": "creating_issues"
+}
+```
 
 ## Notes For Person 2 Codex
 
@@ -95,4 +141,3 @@ This is the shortest path for the Telegram and issue-creation track.
   - update `feedback.findings`
   - store Telegram delivery metadata
   - move status through `awaiting_feedback`, `creating_issues`, and `done`
-
