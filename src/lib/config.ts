@@ -21,6 +21,11 @@ export const config = {
   feedbackModel:
     process.env.GEMINI_FEEDBACK_MODEL ?? process.env.GEMINI_QA_MODEL ?? "google/gemini-3.1-pro-preview",
   reviewAssistantModel: process.env.REVIEW_ASSISTANT_MODEL ?? "google/gemini-3.1-pro-preview",
+  ticTacToeModel:
+    process.env.TICTACTOE_MODEL ??
+    process.env.REVIEW_ASSISTANT_MODEL ??
+    process.env.GEMINI_QA_MODEL ??
+    "google/gemini-3.1-pro-preview",
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
   telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET,
   telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME,

@@ -36,6 +36,7 @@ FFMPEG_PATH=ffmpeg
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_DEFAULT_CHAT_ID=
 TELEGRAM_WEBHOOK_SECRET=
+TICTACTOE_MODEL=
 ```
 
 On Vercel, runtime job files should live in `/tmp`. The app now defaults to `/tmp/lastline-review-jobs` automatically when deployed. `JOBS_ROOT_DIR` is optional and mainly useful if you want to override that path locally.
