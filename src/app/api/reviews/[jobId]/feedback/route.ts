@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { createEmptyFeedbackState } from "@/lib/feedback-agent/contract";
 import { updateReviewJob } from "@/lib/review-jobs-store";
 import { parseTimestampToSeconds } from "@/lib/timestamps";
 import type { ReviewJobStatus } from "@/lib/types";
@@ -39,16 +40,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   try {
     const job = await updateReviewJob(jobId, (current) => {
+      const feedback = current.feedback ?? createEmptyFeedbackState();
+
       switch (body.action) {
         case "start_feedback":
           return {
             ...current,
             status: current.status === "video_ready" ? "awaiting_feedback" : current.status,
             feedback: {
-              ...current.feedback,
+              ...feedback,
               telegramChatId: body.telegramChatId,
               telegramMessageId: body.telegramMessageId,
-              videoDeliveredAt: current.feedback.videoDeliveredAt ?? new Date().toISOString(),
+              videoDeliveredAt: feedback.videoDeliveredAt ?? new Date().toISOString(),
             },
           };
         case "save_finding":
@@ -56,15 +59,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
             ...current,
             status: current.status === "video_ready" ? "awaiting_feedback" : current.status,
             feedback: {
-              ...current.feedback,
+              ...feedback,
               findings: [
-                ...current.feedback.findings,
+                ...feedback.findings,
                 {
                   id: randomUUID(),
+                  createdAt: new Date().toISOString(),
+                  timestampInput: body.timestampText,
                   timestampText: body.timestampText,
                   timestampSeconds: parseTimestampToSeconds(body.timestampText),
+                  description: body.note,
                   note: body.note,
-                  createdAt: new Date().toISOString(),
                 },
               ],
             },
@@ -73,8 +78,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
           return {
             ...current,
             feedback: {
-              ...current.feedback,
-              findings: current.feedback.findings.map((finding) =>
+              ...feedback,
+              findings: feedback.findings.map((finding) =>
                 finding.id === body.findingId
                   ? {
                       ...finding,

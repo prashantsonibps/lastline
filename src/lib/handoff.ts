@@ -1,6 +1,17 @@
 import type { ReviewJob } from "@/lib/types";
 
 export function buildHandoffResponse(job: ReviewJob) {
+  const stitchedVideo =
+    job.handoff?.stitchedVideo ??
+    job.artifacts?.finalVideo ??
+    (job.artifacts?.finalVideoUrl
+      ? {
+          kind: job.artifacts.finalVideoUrl.startsWith("http") ? "remote_url" : "local_path",
+          location: job.artifacts.finalVideoUrl,
+          isDurable: job.artifacts.finalVideoUrl.startsWith("http"),
+        }
+      : undefined);
+
   return {
     id: job.id,
     status: job.status,
@@ -15,10 +26,9 @@ export function buildHandoffResponse(job: ReviewJob) {
     },
     commitSha: job.handoff?.commitSha ?? job.pr.headSha,
     qaTaskSummaries: job.handoff?.qaTaskSummaries ?? [],
-    stitchedVideo: job.handoff?.stitchedVideo,
+    stitchedVideo,
     feedback: job.feedback,
     error: job.error,
     updatedAt: job.updatedAt,
   };
 }
-

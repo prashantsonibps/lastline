@@ -39,7 +39,10 @@ function createBaseJob(input: {
     outputDir: path.join(jobDir, "output"),
     logs: [],
     feedback: {
+      conversation: { step: "idle" },
       findings: [],
+      screenshotsByTimestamp: {},
+      createdIssues: [],
     },
   } satisfies ReviewJob;
 }

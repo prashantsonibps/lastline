@@ -46,7 +46,9 @@ export type ReviewJobStatus =
   | "creating_issues"
   | "done"
   | "failed"
-  | "ignored";
+  | "ignored"
+  | "running"
+  | "completed";
 
 export type QaAction =
   | { type: "goto"; url: string }
@@ -82,6 +84,8 @@ export type VideoArtifact = {
 
 export type ReviewArtifacts = {
   taskArtifacts: ReviewArtifact[];
+  finalVideoPath?: string;
+  finalVideoUrl?: string;
   finalVideo?: VideoArtifact;
 };
 
@@ -93,21 +97,70 @@ export type QaTaskSummary = {
   expected: string[];
 };
 
+export type TelegramActionId = "report_bug" | "add_another" | "create_issues";
+
+export type TelegramBinding = {
+  chatId: string;
+  deliveryMessageId: string;
+  threadId?: string;
+  lastPromptMessageId?: string;
+};
+
+export type FeedbackConversationState =
+  | {
+      step: "idle";
+    }
+  | {
+      step: "awaiting_timestamp";
+    }
+  | {
+      step: "awaiting_description";
+      timestampInput: string;
+      timestampSeconds: number;
+    };
+
+export type ScreenshotArtifact = {
+  timestampSeconds: number;
+  status: "ready" | "failed";
+  assetUrl?: string;
+  error?: string;
+};
+
+export type CreatedIssueRef = {
+  findingId: string;
+  issueNumber: number;
+  issueUrl: string;
+  title: string;
+};
+
 export type FeedbackFinding = {
   id: string;
-  timestampText: string;
+  createdAt: string;
+  timestampInput: string;
   timestampSeconds: number;
-  note: string;
+  description: string;
+  screenshot?: ScreenshotArtifact;
+  issue?: CreatedIssueRef;
+  timestampText?: string;
+  note?: string;
   screenshotArtifact?: VideoArtifact;
   issueUrl?: string;
-  createdAt: string;
 };
 
 export type FeedbackState = {
+  delivery?: {
+    deliveredAt: string;
+    summary: string;
+    videoUrl: string;
+  };
+  telegram?: TelegramBinding;
+  conversation: FeedbackConversationState;
   telegramChatId?: string;
   telegramMessageId?: string;
   videoDeliveredAt?: string;
   findings: FeedbackFinding[];
+  screenshotsByTimestamp: Record<string, ScreenshotArtifact>;
+  createdIssues: CreatedIssueRef[];
 };
 
 export type VideoReadyHandoff = {
@@ -141,5 +194,5 @@ export type ReviewJob = {
   error?: string;
   artifacts?: ReviewArtifacts;
   handoff?: VideoReadyHandoff;
-  feedback: FeedbackState;
+  feedback?: FeedbackState;
 };

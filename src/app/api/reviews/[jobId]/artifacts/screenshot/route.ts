@@ -2,6 +2,7 @@ import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { uploadScreenshotArtifact } from "@/lib/blob";
+import { createEmptyFeedbackState } from "@/lib/feedback-agent/contract";
 import { pathExists } from "@/lib/fs-utils";
 import { getReviewJob, updateReviewJob } from "@/lib/review-jobs-store";
 import { parseTimestampToSeconds } from "@/lib/timestamps";
@@ -75,8 +76,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
     await updateReviewJob(jobId, (current) => ({
       ...current,
       feedback: {
-        ...current.feedback,
-        findings: current.feedback.findings.map((finding) =>
+        ...(current.feedback ?? createEmptyFeedbackState()),
+        findings: (current.feedback ?? createEmptyFeedbackState()).findings.map((finding) =>
           finding.id === body.findingId
             ? {
                 ...finding,

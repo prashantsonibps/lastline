@@ -71,12 +71,8 @@ export async function executeReviewJob(jobId: string) {
 
     await updateReviewJob(jobId, (current) => ({
       ...current,
-      tasks: qaTasks,
-    }));
-
-    await updateReviewJob(jobId, (current) => ({
-      ...current,
       status: "testing",
+      tasks: qaTasks,
     }));
 
     if (job.runtime.skipAppStart) {
@@ -127,12 +123,27 @@ export async function executeReviewJob(jobId: string) {
       await log("Blob upload not configured; keeping stitched video as a local artifact path");
     }
 
+    const derivedPrUrl = job.pr.url ?? `https://github.com/${job.repo.owner}/${job.repo.name}/pull/${job.pr.number}`;
+    const finalVideoUrl = uploadedFinalVideo.location;
+
     await updateReviewJob(jobId, (current) => ({
       ...current,
       status: "video_ready",
       artifacts: {
         taskArtifacts: artifacts,
+        finalVideoPath,
+        finalVideoUrl,
         finalVideo: uploadedFinalVideo,
+      },
+      pr: {
+        ...current.pr,
+        url: current.pr.url ?? derivedPrUrl,
+      },
+      feedback: current.feedback ?? {
+        conversation: { step: "idle" },
+        findings: [],
+        screenshotsByTimestamp: {},
+        createdIssues: [],
       },
       handoff: {
         repo: {
@@ -142,7 +153,7 @@ export async function executeReviewJob(jobId: string) {
         pr: {
           number: current.pr.number,
           title: current.pr.title,
-          url: current.pr.url,
+          url: current.pr.url ?? derivedPrUrl,
         },
         commitSha: current.pr.headSha,
         qaTaskSummaries: buildTaskSummaries(current.tasks),
