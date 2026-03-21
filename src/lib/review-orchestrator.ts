@@ -27,6 +27,16 @@ function createLocalVideoArtifact(location: string): VideoArtifact {
   };
 }
 
+function isLiveReviewRun(job: {
+  runtime: {
+    reviewBaseUrl?: string;
+    skipInstall?: boolean;
+    skipAppStart?: boolean;
+  };
+}) {
+  return Boolean(job.runtime.reviewBaseUrl && job.runtime.skipInstall && job.runtime.skipAppStart);
+}
+
 export async function executeReviewJob(jobId: string) {
   const existingJob = await getReviewJob(jobId);
 
@@ -60,8 +70,13 @@ export async function executeReviewJob(jobId: string) {
 
   try {
     const job = (await getReviewJob(jobId))!;
-    const workspace = await prepareWorkspace(job, log);
     const reviewBaseUrl = job.runtime.reviewBaseUrl ?? config.reviewAppBaseUrl;
+    const shouldPrepareWorkspace = !isLiveReviewRun(job);
+    const workspace = shouldPrepareWorkspace ? await prepareWorkspace(job, log) : null;
+
+    if (!shouldPrepareWorkspace) {
+      await log(`Skipping workspace clone and dependency preparation; using live review target ${reviewBaseUrl}`);
+    }
 
     const qaTasks = await generateQaPlan({
       repo: job.repo,
@@ -78,6 +93,10 @@ export async function executeReviewJob(jobId: string) {
     if (job.runtime.skipAppStart) {
       await log(`Skipping local app start and using review base URL ${reviewBaseUrl}`);
     } else {
+      if (!workspace) {
+        throw new Error("A local workspace is required when runtime.skipAppStart is disabled.");
+      }
+
       serverHandle = await startDevServer({
         appDir: workspace.appDir,
         baseUrl: reviewBaseUrl,
