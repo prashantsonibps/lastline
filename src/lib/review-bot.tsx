@@ -1,6 +1,6 @@
 /** @jsxImportSource chat */
 
-import { Actions, Button, Card, CardText, Chat, type Thread, toAiMessages, toCardElement } from "chat";
+import { Actions, Button, Card, CardText, Chat, type ActionEvent, type Thread, toAiMessages, toCardElement } from "chat";
 import { createTelegramAdapter } from "@chat-adapter/telegram";
 import { getChatStateStore } from "@/lib/chat-state-store";
 import { config } from "@/lib/config";
@@ -15,6 +15,20 @@ import {
   saveReviewFindingOperation,
 } from "@/lib/review-assistant/operations";
 import { normalizeTimestampToSeconds } from "@/lib/feedback-agent/timestamps";
+import {
+  applyMove,
+  clearTicTacToeState,
+  createNewTicTacToeState,
+  getTicTacToeState,
+  isTicTacToeStartMessage,
+  parseTicTacToeCellActionId,
+  resolveBotTurn,
+  setTicTacToeState,
+  TICTACTOE_CELL_ACTION_IDS,
+  TICTACTOE_PLAY_AGAIN_ACTION_ID,
+  TICTACTOE_RESET_ACTION_ID,
+} from "@/lib/tic-tac-toe";
+import { createTicTacToeCard } from "@/lib/tic-tac-toe-card";
 
 let reviewBotSingleton: Chat | null = null;
 let handlersRegistered = false;
@@ -218,6 +232,108 @@ async function handleUnboundThread(threadId: string, text: string) {
   await postJobSelectionPrompt(threadId);
 }
 
+async function postTicTacToeBoard(thread: Thread<unknown, unknown>, message: string) {
+  const state = (await getTicTacToeState(thread.id)) ?? createNewTicTacToeState();
+  const sent = await thread.post(createTicTacToeCard(state, message));
+  const nextState = {
+    ...state,
+    lastBoardMessageId: sent.id,
+  };
+  await setTicTacToeState(thread.id, nextState);
+  return nextState;
+}
+
+async function startOrResumeTicTacToe(thread: Thread<unknown, unknown>) {
+  const existingState = await getTicTacToeState(thread.id);
+
+  if (existingState?.status === "active") {
+    await postTicTacToeBoard(thread, "Game already in progress. You are X and I am O.");
+    return true;
+  }
+
+  const nextState = createNewTicTacToeState();
+  await setTicTacToeState(thread.id, nextState);
+  await postTicTacToeBoard(thread, "You said you were bored, so I brought a board. You go first as X.");
+  return true;
+}
+
+async function maybeStartTicTacToe(thread: Thread<unknown, unknown>, text: string) {
+  if (!isTicTacToeStartMessage(text)) {
+    return false;
+  }
+
+  await startOrResumeTicTacToe(thread);
+  return true;
+}
+
+async function handleTicTacToeAction(event: ActionEvent) {
+  if (!event.thread) {
+    return;
+  }
+
+  if (event.actionId === TICTACTOE_RESET_ACTION_ID) {
+    await clearTicTacToeState(event.thread.id);
+    await event.thread.post("Tic Tac Toe reset. Say `bored` or `/tictactoe` when you want another round.");
+    return;
+  }
+
+  if (event.actionId === TICTACTOE_PLAY_AGAIN_ACTION_ID) {
+    await setTicTacToeState(event.thread.id, createNewTicTacToeState());
+    await postTicTacToeBoard(event.thread, "Fresh board. You are X again.");
+    return;
+  }
+
+  const cellIndex = parseTicTacToeCellActionId(event.actionId);
+
+  if (cellIndex === null) {
+    return;
+  }
+
+  const currentState = await getTicTacToeState(event.thread.id);
+
+  if (!currentState) {
+    await event.thread.post("No active Tic Tac Toe game yet. Say `bored` or `/tictactoe` to start one.");
+    return;
+  }
+
+  let afterHumanMove;
+  try {
+    afterHumanMove = applyMove(currentState, cellIndex, "X");
+  } catch (error) {
+    await event.thread.post(error instanceof Error ? error.message : "That move did not work.");
+    return;
+  }
+
+  await setTicTacToeState(event.thread.id, afterHumanMove);
+
+  if (afterHumanMove.status === "finished") {
+    await postTicTacToeBoard(event.thread, "You locked in your move.");
+    return;
+  }
+
+  await event.thread.startTyping("Thinking...");
+  const botTurn = await resolveBotTurn(afterHumanMove.board);
+
+  if (typeof botTurn.move !== "number") {
+    await postTicTacToeBoard(event.thread, "The board is full. That round is over.");
+    return;
+  }
+
+  let afterBotMove;
+  try {
+    afterBotMove = applyMove(afterHumanMove, botTurn.move, "O");
+  } catch {
+    afterBotMove = afterHumanMove;
+  }
+
+  const finalState = {
+    ...afterBotMove,
+    lastCommentary: botTurn.quip ?? null,
+  };
+  await setTicTacToeState(event.thread.id, finalState);
+  await postTicTacToeBoard(event.thread, botTurn.quip?.trim() || "I made my move.");
+}
+
 async function handleIdleMessage(thread: Thread, text: string) {
   const state = await getReviewChatThreadState(thread.id);
 
@@ -269,13 +385,26 @@ function registerHandlers(reviewBot: Chat) {
 
   reviewBot.onDirectMessage(async (thread, message) => {
     await thread.subscribe();
+    if (await maybeStartTicTacToe(thread, message.text)) {
+      return;
+    }
     await handleUnboundThread(thread.id, message.text);
   });
 
   reviewBot.onNewMention(async (thread, message) => {
     await thread.subscribe();
+    if (await maybeStartTicTacToe(thread, message.text)) {
+      return;
+    }
     await handleUnboundThread(thread.id, message.text);
   });
+
+  reviewBot.onAction(
+    [...TICTACTOE_CELL_ACTION_IDS, TICTACTOE_PLAY_AGAIN_ACTION_ID, TICTACTOE_RESET_ACTION_ID],
+    async (event) => {
+      await handleTicTacToeAction(event);
+    },
+  );
 
   reviewBot.onAction(["report_bug", "add_another"], async (event) => {
     if (!event.thread) {
@@ -322,6 +451,10 @@ function registerHandlers(reviewBot: Chat) {
   });
 
   reviewBot.onSubscribedMessage(async (thread, message) => {
+    if (await maybeStartTicTacToe(thread, message.text)) {
+      return;
+    }
+
     const state = (await getReviewChatThreadState(thread.id)) ?? {
       threadId: thread.id,
       platform: "telegram" as const,
