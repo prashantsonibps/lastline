@@ -37,6 +37,7 @@ FFMPEG_PATH=ffmpeg
 - GitHub webhook should point to `/api/github/pr-webhook` on the deployed app.
 - Use the same env names locally, in Vercel, and in GitHub Actions to avoid config drift.
 - Person 2’s planning notes and the shared implementation split are in [docs/hackathon-plan.md](/Users/prashantsoni/Desktop/Vercel*Deepmind_hackathon/docs/hackathon-plan.md).
+- The machine-side and feedback-side reconciliation contract is in [docs/integration-contract.md](/Users/prashantsoni/Desktop/Vercel*Deepmind_hackathon/docs/integration-contract.md).
 
 ## Manual run
 
