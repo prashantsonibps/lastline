@@ -6,7 +6,25 @@ import { generateQaPlan } from "@/lib/qa-plan";
 import { appendJobLog, getReviewJob, updateReviewJob } from "@/lib/review-jobs-store";
 import { createIntroCard, stitchReviewVideo } from "@/lib/video";
 import { prepareWorkspace } from "@/lib/workspace";
-import type { ReviewArtifact } from "@/lib/types";
+import type { QaTask, ReviewArtifact, VideoArtifact } from "@/lib/types";
+
+function buildTaskSummaries(tasks: QaTask[]) {
+  return tasks.map((task) => ({
+    id: task.id,
+    title: task.title,
+    goal: task.goal,
+    steps: task.steps,
+    expected: task.expected,
+  }));
+}
+
+function createLocalVideoArtifact(location: string): VideoArtifact {
+  return {
+    kind: "local_path",
+    location,
+    isDurable: false,
+  };
+}
 
 export async function executeReviewJob(jobId: string) {
   const existingJob = await getReviewJob(jobId);
@@ -27,7 +45,7 @@ export async function executeReviewJob(jobId: string) {
 
   await updateReviewJob(jobId, (job) => ({
     ...job,
-    status: "running",
+    status: "planning",
     error: undefined,
   }));
 
@@ -52,6 +70,11 @@ export async function executeReviewJob(jobId: string) {
     await updateReviewJob(jobId, (current) => ({
       ...current,
       tasks: qaTasks,
+    }));
+
+    await updateReviewJob(jobId, (current) => ({
+      ...current,
+      status: "testing",
     }));
 
     serverHandle = await startDevServer({
@@ -86,10 +109,24 @@ export async function executeReviewJob(jobId: string) {
 
     await updateReviewJob(jobId, (current) => ({
       ...current,
-      status: "completed",
+      status: "video_ready",
       artifacts: {
         taskArtifacts: artifacts,
-        finalVideoPath,
+        finalVideo: createLocalVideoArtifact(finalVideoPath),
+      },
+      handoff: {
+        repo: {
+          owner: current.repo.owner,
+          name: current.repo.name,
+        },
+        pr: {
+          number: current.pr.number,
+          title: current.pr.title,
+          url: current.pr.url,
+        },
+        commitSha: current.pr.headSha,
+        qaTaskSummaries: buildTaskSummaries(current.tasks),
+        stitchedVideo: createLocalVideoArtifact(finalVideoPath),
       },
     }));
   } catch (error) {

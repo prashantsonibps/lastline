@@ -8,6 +8,7 @@
     "number": 9999,
     "title": "Manual SpaceGuard frontend review",
     "body": "Smoke-test the current frontend as a local end-to-end validation run.",
+    "url": "https://github.com/prashantsonibps/SpaceGuard/pull/9999",
     "headRef": "main",
     "baseRef": "main",
     "headSha": "manual-spaceguard-run"
@@ -32,4 +33,3 @@
     "startTimeoutMs": 180000
   }
 }
-

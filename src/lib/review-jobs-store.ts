@@ -37,6 +37,9 @@ function createBaseJob(input: {
     workspaceDir: path.join(jobDir, "workspace"),
     outputDir: path.join(jobDir, "output"),
     logs: [],
+    feedback: {
+      findings: [],
+    },
   } satisfies ReviewJob;
 }
 

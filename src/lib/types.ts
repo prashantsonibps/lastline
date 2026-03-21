@@ -8,6 +8,7 @@ export type PullRequestRef = {
   number: number;
   title: string;
   body: string;
+  url?: string;
   headRef: string;
   baseRef: string;
   headSha: string;
@@ -35,8 +36,12 @@ export type ReviewRuntimeConfig = {
 
 export type ReviewJobStatus =
   | "queued"
-  | "running"
-  | "completed"
+  | "planning"
+  | "testing"
+  | "video_ready"
+  | "awaiting_feedback"
+  | "creating_issues"
+  | "done"
   | "failed"
   | "ignored";
 
@@ -66,9 +71,54 @@ export type ReviewArtifact = {
   videoPath: string;
 };
 
+export type VideoArtifact = {
+  kind: "local_path" | "remote_url";
+  location: string;
+  isDurable: boolean;
+};
+
 export type ReviewArtifacts = {
   taskArtifacts: ReviewArtifact[];
-  finalVideoPath?: string;
+  finalVideo?: VideoArtifact;
+};
+
+export type QaTaskSummary = {
+  id: string;
+  title: string;
+  goal: string;
+  steps: string[];
+  expected: string[];
+};
+
+export type FeedbackFinding = {
+  id: string;
+  timestampText: string;
+  timestampSeconds: number;
+  note: string;
+  screenshotArtifact?: VideoArtifact;
+  issueUrl?: string;
+  createdAt: string;
+};
+
+export type FeedbackState = {
+  telegramChatId?: string;
+  videoDeliveredAt?: string;
+  findings: FeedbackFinding[];
+};
+
+export type VideoReadyHandoff = {
+  repo: {
+    owner: string;
+    name: string;
+  };
+  pr: {
+    number: number;
+    title: string;
+    url?: string;
+  };
+  commitSha: string;
+  qaTaskSummaries: QaTaskSummary[];
+  stitchedVideo?: VideoArtifact;
 };
 
 export type ReviewJob = {
@@ -86,4 +136,6 @@ export type ReviewJob = {
   logs: string[];
   error?: string;
   artifacts?: ReviewArtifacts;
+  handoff?: VideoReadyHandoff;
+  feedback: FeedbackState;
 };

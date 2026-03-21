@@ -13,6 +13,7 @@ const manualRunSchema = z.object({
     number: z.number().int().positive(),
     title: z.string().min(1),
     body: z.string().default(""),
+    url: z.string().url().optional(),
     headRef: z.string().min(1),
     baseRef: z.string().min(1),
     headSha: z.string().min(1),

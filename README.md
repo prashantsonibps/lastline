@@ -11,6 +11,7 @@ PR review video agent scaffold for the hackathon MVP.
 - QA plan generation via AI SDK with a deterministic JSON schema
 - Playwright task runner with per-task video recording
 - FFmpeg intro-card generation and final video stitching
+- `video_ready` handoff payload for the feedback agent
 - Minimal dashboard at `/`
 
 ## Environment
@@ -61,6 +62,8 @@ curl -X POST http://localhost:3000/api/reviews/run \
 ```bash
 curl http://localhost:3000/api/reviews/<job-id>
 ```
+
+When the machine-side flow succeeds, the run will move into `video_ready` and expose a `handoff` block containing PR metadata, ordered QA task summaries, and the stitched video artifact reference for Person 2’s feedback agent.
 
 ## Next steps
 
